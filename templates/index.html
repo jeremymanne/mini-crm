@@ -16,8 +16,8 @@
         <ul class="entity-list sortable-list" id="sortable-companies">
             {% for c in companies %}
             <li data-id="{{ c.id }}">
-                <span class="drag-handle">&#x2630;</span>
                 <a href="{{ url_for('company_detail', id=c.id) }}">
+                    <span class="drag-handle">&#x2630;</span>
                     <strong>{{ c.name }}</strong>
                     {% if c.type %}<span class="tag">{{ c.type }}</span>{% endif %}
                     {% for rel in company_rels.get(c.id, []) %}
@@ -38,8 +38,8 @@
         <ul class="entity-list sortable-list" id="sortable-individuals">
             {% for i in individuals %}
             <li data-id="{{ i.id }}">
-                <span class="drag-handle">&#x2630;</span>
                 <a href="{{ url_for('individual_detail', id=i.id) }}">
+                    <span class="drag-handle">&#x2630;</span>
                     <strong>{{ i.name }}</strong>
                     {% if i.title %}<span class="meta">{{ i.title }}</span>{% endif %}
                     {% for rel in individual_rels.get(i.id, []) %}
