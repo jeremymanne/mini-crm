@@ -1,7 +1,7 @@
 import os
 import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, flash, g, session, jsonify, Response
 
@@ -107,6 +107,11 @@ def datefmt(value):
                 continue
         else:
             return value
+    # Convert UTC to Pacific Time (UTC-8, or UTC-7 during DST)
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    pacific = timezone(timedelta(hours=-8))
+    value = value.astimezone(pacific)
     return value.strftime('%b %d, %Y %I:%M %p')
 
 
