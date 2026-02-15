@@ -94,6 +94,22 @@ with app.app_context():
     init_db()
 
 
+@app.template_filter('datefmt')
+def datefmt(value):
+    if not value:
+        return ''
+    if isinstance(value, str):
+        for fmt in ('%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%f', '%Y-%m-%dT%H:%M:%S'):
+            try:
+                value = datetime.strptime(value, fmt)
+                break
+            except ValueError:
+                continue
+        else:
+            return value
+    return value.strftime('%b %d, %Y %I:%M %p')
+
+
 # --- Auth ---
 
 @app.route('/login', methods=['GET', 'POST'])

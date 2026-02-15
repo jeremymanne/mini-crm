@@ -18,7 +18,7 @@
         {% if company.website %}<div class="field"><label>Website</label><a href="{{ company.website }}" target="_blank">{{ company.website }}</a></div>{% endif %}
         {% if company.linkedin_url %}<div class="field"><label>LinkedIn</label><a href="{{ company.linkedin_url }}" target="_blank">{{ company.linkedin_url }}</a></div>{% endif %}
         {% if company.location %}<div class="field"><label>Location</label><span>{{ company.location }}</span></div>{% endif %}
-        <div class="field"><label>Added</label><span>{{ company.created_at }}</span></div>
+        <div class="field"><label>Added</label><span>{{ company.created_at|datefmt }}</span></div>
     </div>
 </div>
 
@@ -71,7 +71,7 @@
         <li>
             <p>{{ note.note_text }}</p>
             <div class="note-meta">
-                <span>{{ note.created_at }}</span>
+                <span>{{ note.created_at|datefmt }}</span>
                 <form method="post" action="{{ url_for('delete_note', id=note.id) }}" class="inline-form">
                     <button type="submit" class="btn-small btn-danger">Delete</button>
                 </form>
@@ -102,7 +102,7 @@
             <div class="follow-up-header">
                 <h3>{{ item.follow_up.title }}</h3>
                 <div class="follow-up-actions">
-                    <span class="meta">{{ item.follow_up.created_at }}</span>
+                    <span class="meta">{{ item.follow_up.created_at|datefmt }}</span>
                     <a href="{{ url_for('edit_follow_up', id=item.follow_up.id) }}" class="btn-small">Edit</a>
                 </div>
             </div>
@@ -122,7 +122,7 @@
                 {% for comment in item.comments %}
                 <div class="follow-up-comment">
                     <p>{{ comment.comment_text }}</p>
-                    <span class="meta">{{ comment.created_at }}</span>
+                    <span class="meta">{{ comment.created_at|datefmt }}</span>
                 </div>
                 {% endfor %}
             </div>

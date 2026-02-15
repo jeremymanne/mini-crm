@@ -19,7 +19,7 @@
         {% if individual.phone %}<div class="field"><label>Phone</label><span>{{ individual.phone }}</span></div>{% endif %}
         {% if individual.linkedin_url %}<div class="field"><label>LinkedIn</label><a href="{{ individual.linkedin_url }}" target="_blank">{{ individual.linkedin_url }}</a></div>{% endif %}
         {% if individual.location %}<div class="field"><label>Location</label><span>{{ individual.location }}</span></div>{% endif %}
-        <div class="field"><label>Added</label><span>{{ individual.created_at }}</span></div>
+        <div class="field"><label>Added</label><span>{{ individual.created_at|datefmt }}</span></div>
     </div>
 </div>
 
@@ -72,7 +72,7 @@
         <li>
             <p>{{ note.note_text }}</p>
             <div class="note-meta">
-                <span>{{ note.created_at }}</span>
+                <span>{{ note.created_at|datefmt }}</span>
                 <form method="post" action="{{ url_for('delete_note', id=note.id) }}" class="inline-form">
                     <button type="submit" class="btn-small btn-danger">Delete</button>
                 </form>
@@ -103,7 +103,7 @@
             <div class="follow-up-header">
                 <h3>{{ item.follow_up.title }}</h3>
                 <div class="follow-up-actions">
-                    <span class="meta">{{ item.follow_up.created_at }}</span>
+                    <span class="meta">{{ item.follow_up.created_at|datefmt }}</span>
                     <a href="{{ url_for('edit_follow_up', id=item.follow_up.id) }}" class="btn-small">Edit</a>
                 </div>
             </div>
@@ -123,7 +123,7 @@
                 {% for comment in item.comments %}
                 <div class="follow-up-comment">
                     <p>{{ comment.comment_text }}</p>
-                    <span class="meta">{{ comment.created_at }}</span>
+                    <span class="meta">{{ comment.created_at|datefmt }}</span>
                 </div>
                 {% endfor %}
             </div>
