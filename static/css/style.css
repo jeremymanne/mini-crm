@@ -418,6 +418,38 @@ main {
     resize: vertical;
 }
 
+/* Login */
+.login-container {
+    max-width: 360px;
+    margin: 4rem auto;
+    text-align: center;
+}
+
+.login-container h1 {
+    margin-bottom: 1.5rem;
+    font-size: 1.75rem;
+}
+
+.login-form {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.login-form input {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+}
+
+.login-form .btn {
+    width: 100%;
+}
+
 /* Checkbox lists */
 .checkbox-list {
     max-height: 120px;

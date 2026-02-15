@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Login - Mini CRM{% endblock %}
+{% block content %}
+<div class="login-container">
+    <h1>Mini CRM</h1>
+    <form method="post" class="login-form">
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required autofocus>
+        </div>
+        <button type="submit" class="btn">Log In</button>
+    </form>
+</div>
+{% endblock %}

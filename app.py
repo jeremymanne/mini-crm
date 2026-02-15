@@ -1,9 +1,20 @@
 import os
 import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, flash, g
+from functools import wraps
+from flask import Flask, render_template, request, redirect, url_for, flash, g, session
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me-in-production')
+APP_PASSWORD = os.environ.get('APP_PASSWORD', '')
+
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if APP_PASSWORD and not session.get('logged_in'):
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 USE_POSTGRES = DATABASE_URL is not None
@@ -83,9 +94,31 @@ with app.app_context():
     init_db()
 
 
+# --- Auth ---
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if not APP_PASSWORD:
+        return redirect(url_for('index'))
+    if request.method == 'POST':
+        if request.form['password'] == APP_PASSWORD:
+            session['logged_in'] = True
+            return redirect(url_for('index'))
+        flash('Incorrect password.', 'error')
+    return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    flash('Logged out.', 'success')
+    return redirect(url_for('login'))
+
+
 # --- Home / Search ---
 
 @app.route('/')
+@login_required
 def index():
     q = request.args.get('q', '').strip()
     if q:
@@ -174,6 +207,7 @@ def index():
 # --- Companies ---
 
 @app.route('/company/add', methods=['GET', 'POST'])
+@login_required
 def add_company():
     if request.method == 'POST':
         name = request.form['name'].strip()
@@ -195,6 +229,7 @@ def add_company():
 
 
 @app.route('/company/<int:id>')
+@login_required
 def company_detail(id):
     company = query_db('SELECT * FROM companies WHERE id = ?', (id,), one=True)
     if not company:
@@ -228,6 +263,7 @@ def company_detail(id):
 
 
 @app.route('/company/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit_company(id):
     company = query_db('SELECT * FROM companies WHERE id = ?', (id,), one=True)
     if not company:
@@ -252,6 +288,7 @@ def edit_company(id):
 
 
 @app.route('/company/<int:id>/delete', methods=['POST'])
+@login_required
 def delete_company(id):
     query_db('DELETE FROM companies WHERE id = ?', (id,))
     query_db("DELETE FROM notes WHERE entity_type = 'company' AND entity_id = ?", (id,))
@@ -267,6 +304,7 @@ def delete_company(id):
 # --- Individuals ---
 
 @app.route('/individual/add', methods=['GET', 'POST'])
+@login_required
 def add_individual():
     if request.method == 'POST':
         name = request.form['name'].strip()
@@ -289,6 +327,7 @@ def add_individual():
 
 
 @app.route('/individual/<int:id>')
+@login_required
 def individual_detail(id):
     individual = query_db('SELECT * FROM individuals WHERE id = ?', (id,), one=True)
     if not individual:
@@ -322,6 +361,7 @@ def individual_detail(id):
 
 
 @app.route('/individual/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit_individual(id):
     individual = query_db('SELECT * FROM individuals WHERE id = ?', (id,), one=True)
     if not individual:
@@ -347,6 +387,7 @@ def edit_individual(id):
 
 
 @app.route('/individual/<int:id>/delete', methods=['POST'])
+@login_required
 def delete_individual(id):
     query_db('DELETE FROM individuals WHERE id = ?', (id,))
     query_db("DELETE FROM notes WHERE entity_type = 'individual' AND entity_id = ?", (id,))
@@ -362,6 +403,7 @@ def delete_individual(id):
 # --- Notes ---
 
 @app.route('/note/add', methods=['POST'])
+@login_required
 def add_note():
     entity_type = request.form['entity_type']
     entity_id = int(request.form['entity_id'])
@@ -381,6 +423,7 @@ def add_note():
 
 
 @app.route('/note/<int:id>/delete', methods=['POST'])
+@login_required
 def delete_note(id):
     note = query_db('SELECT * FROM notes WHERE id = ?', (id,), one=True)
     if note:
@@ -397,6 +440,7 @@ def delete_note(id):
 # --- Relationships ---
 
 @app.route('/relationship/add', methods=['POST'])
+@login_required
 def add_relationship():
     from_type = request.form['from_type']
     from_id = int(request.form['from_id'])
@@ -418,6 +462,7 @@ def add_relationship():
 
 
 @app.route('/relationship/<int:id>/delete', methods=['POST'])
+@login_required
 def delete_relationship(id):
     rel = query_db('SELECT * FROM relationships WHERE id = ?', (id,), one=True)
     if rel:
@@ -436,6 +481,7 @@ def delete_relationship(id):
 # --- Follow-Ups ---
 
 @app.route('/follow-up/add', methods=['POST'])
+@login_required
 def add_follow_up():
     title = request.form['title'].strip()
     body = request.form.get('body', '').strip()
@@ -458,6 +504,7 @@ def add_follow_up():
 
 
 @app.route('/follow-up/<int:id>/comment', methods=['POST'])
+@login_required
 def add_follow_up_comment(id):
     comment_text = request.form['comment_text'].strip()
     if not comment_text:
@@ -471,6 +518,7 @@ def add_follow_up_comment(id):
 
 
 @app.route('/follow-up/<int:id>/delete', methods=['POST'])
+@login_required
 def delete_follow_up(id):
     query_db('DELETE FROM follow_up_comments WHERE follow_up_id = ?', (id,))
     query_db('DELETE FROM follow_up_links WHERE follow_up_id = ?', (id,))
