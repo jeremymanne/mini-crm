@@ -418,6 +418,35 @@ main {
     resize: vertical;
 }
 
+/* Checkbox lists */
+.checkbox-list {
+    max-height: 120px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 0.4rem;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.4rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: normal;
+    font-size: 0.9rem;
+}
+
+.checkbox-item:hover {
+    background: #f5f7fa;
+}
+
+.checkbox-item input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
 /* Follow-ups */
 .follow-up-section {
     margin-top: 2.5rem;

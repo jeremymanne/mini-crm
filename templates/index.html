@@ -116,19 +116,23 @@
             </div>
             <div class="form-group">
                 <label>Link Companies</label>
-                <select name="link_companies" multiple>
+                <div class="checkbox-list">
                     {% for c in all_companies %}
-                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="link_companies" value="{{ c.id }}"> {{ c.name }}
+                    </label>
                     {% endfor %}
-                </select>
+                </div>
             </div>
             <div class="form-group">
                 <label>Link Individuals</label>
-                <select name="link_individuals" multiple>
+                <div class="checkbox-list">
                     {% for i in all_individuals %}
-                    <option value="{{ i.id }}">{{ i.name }}</option>
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="link_individuals" value="{{ i.id }}"> {{ i.name }}
+                    </label>
                     {% endfor %}
-                </select>
+                </div>
             </div>
             <button type="submit" class="btn">Create Note</button>
         </form>
