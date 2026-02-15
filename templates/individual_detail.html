@@ -102,7 +102,10 @@
         <div class="follow-up-card">
             <div class="follow-up-header">
                 <h3>{{ item.follow_up.title }}</h3>
-                <span class="meta">{{ item.follow_up.created_at }}</span>
+                <div class="follow-up-actions">
+                    <span class="meta">{{ item.follow_up.created_at }}</span>
+                    <a href="{{ url_for('edit_follow_up', id=item.follow_up.id) }}" class="btn-small">Edit</a>
+                </div>
             </div>
             {% if item.follow_up.body %}
             <p class="follow-up-body">{{ item.follow_up.body }}</p>

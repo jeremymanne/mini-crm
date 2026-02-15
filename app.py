@@ -503,6 +503,42 @@ def add_follow_up():
     return redirect(url_for('index'))
 
 
+@app.route('/follow-up/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_follow_up(id):
+    fu = query_db('SELECT * FROM follow_ups WHERE id = ?', (id,), one=True)
+    if not fu:
+        flash('Follow-up not found.', 'error')
+        return redirect(url_for('index'))
+    if request.method == 'POST':
+        title = request.form['title'].strip()
+        body = request.form.get('body', '').strip()
+        if not title:
+            flash('Title is required.', 'error')
+            return redirect(url_for('edit_follow_up', id=id))
+        query_db('UPDATE follow_ups SET title=?, body=? WHERE id=?', (title, body, id))
+        # Replace all links
+        query_db('DELETE FROM follow_up_links WHERE follow_up_id = ?', (id,))
+        for cid in request.form.getlist('link_companies'):
+            query_db('INSERT INTO follow_up_links (follow_up_id, entity_type, entity_id) VALUES (?, ?, ?)',
+                     (id, 'company', int(cid)))
+        for iid in request.form.getlist('link_individuals'):
+            query_db('INSERT INTO follow_up_links (follow_up_id, entity_type, entity_id) VALUES (?, ?, ?)',
+                     (id, 'individual', int(iid)))
+        commit_db()
+        flash('Follow-up updated.', 'success')
+        return redirect(url_for('index') + f'#follow-up-{id}')
+    # Get current links
+    current_links = query_db('SELECT * FROM follow_up_links WHERE follow_up_id = ?', (id,))
+    linked_company_ids = [l['entity_id'] for l in current_links if l['entity_type'] == 'company']
+    linked_individual_ids = [l['entity_id'] for l in current_links if l['entity_type'] == 'individual']
+    all_companies = query_db('SELECT id, name FROM companies ORDER BY name')
+    all_individuals = query_db('SELECT id, name FROM individuals ORDER BY name')
+    return render_template('edit_follow_up.html', follow_up=fu,
+                           all_companies=all_companies, all_individuals=all_individuals,
+                           linked_company_ids=linked_company_ids, linked_individual_ids=linked_individual_ids)
+
+
 @app.route('/follow-up/<int:id>/comment', methods=['POST'])
 @login_required
 def add_follow_up_comment(id):
