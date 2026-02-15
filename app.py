@@ -1,17 +1,63 @@
-import sqlite3
 import os
+import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, flash, g
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me-in-production')
-DATABASE = os.path.join(app.root_path, 'crm.db')
+
+DATABASE_URL = os.environ.get('DATABASE_URL')
+USE_POSTGRES = DATABASE_URL is not None
+
+if USE_POSTGRES:
+    import psycopg2
+    import psycopg2.extras
+
+SQLITE_PATH = os.path.join(app.root_path, 'crm.db')
 
 
 def get_db():
     if 'db' not in g:
-        g.db = sqlite3.connect(DATABASE)
-        g.db.row_factory = sqlite3.Row
+        if USE_POSTGRES:
+            g.db = psycopg2.connect(DATABASE_URL)
+            g.db.autocommit = False
+        else:
+            g.db = sqlite3.connect(SQLITE_PATH)
+            g.db.row_factory = sqlite3.Row
     return g.db
+
+
+def query_db(sql, args=(), one=False, insert=False):
+    db = get_db()
+    if USE_POSTGRES:
+        # Convert ? placeholders to %s for postgres
+        sql = sql.replace('?', '%s')
+        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(sql, args)
+        if insert:
+            if 'RETURNING' in sql.upper():
+                row = cur.fetchone()
+                return row['id'] if row else None
+            return None
+        if sql.strip().upper().startswith('SELECT'):
+            rows = cur.fetchall()
+            return rows[0] if one and rows else rows if not one else None
+        return None
+    else:
+        cur = db.execute(sql, args)
+        if insert:
+            if 'RETURNING' not in sql.upper():
+                return cur.lastrowid
+            row = cur.fetchone()
+            return row['id'] if row else None
+        if sql.strip().upper().startswith('SELECT'):
+            rows = cur.fetchall()
+            return rows[0] if one and rows else rows if not one else None
+        return None
+
+
+def commit_db():
+    db = get_db()
+    db.commit()
 
 
 @app.teardown_appcontext
@@ -23,14 +69,14 @@ def close_db(exception):
 
 def init_db():
     db = get_db()
-    with app.open_resource('schema.sql') as f:
-        db.executescript(f.read().decode('utf-8'))
-
-
-@app.cli.command('init-db')
-def init_db_command():
-    init_db()
-    print('Database initialized.')
+    if USE_POSTGRES:
+        with app.open_resource('schema_pg.sql') as f:
+            cur = db.cursor()
+            cur.execute(f.read().decode('utf-8'))
+            db.commit()
+    else:
+        with app.open_resource('schema.sql') as f:
+            db.executescript(f.read().decode('utf-8'))
 
 
 with app.app_context():
@@ -42,31 +88,27 @@ with app.app_context():
 @app.route('/')
 def index():
     q = request.args.get('q', '').strip()
-    companies = []
-    individuals = []
     if q:
-        db = get_db()
-        companies = db.execute(
+        companies = query_db(
             'SELECT * FROM companies WHERE name LIKE ? ORDER BY name',
             (f'%{q}%',)
-        ).fetchall()
-        individuals = db.execute(
+        )
+        individuals = query_db(
             'SELECT * FROM individuals WHERE name LIKE ? ORDER BY name',
             (f'%{q}%',)
-        ).fetchall()
+        )
     else:
-        db = get_db()
-        companies = db.execute('SELECT * FROM companies ORDER BY created_at DESC LIMIT 20').fetchall()
-        individuals = db.execute('SELECT * FROM individuals ORDER BY created_at DESC LIMIT 20').fetchall()
+        companies = query_db('SELECT * FROM companies ORDER BY created_at DESC LIMIT 20')
+        individuals = query_db('SELECT * FROM individuals ORDER BY created_at DESC LIMIT 20')
+
     # Build relationship tags for each entity
-    db = get_db()
     company_rels = {}
     for c in companies:
-        rels = db.execute(
+        rels = query_db(
             'SELECT r.relationship_type, r.from_type, r.from_id, r.to_type, r.to_id FROM relationships r '
             'WHERE (r.from_type = ? AND r.from_id = ?) OR (r.to_type = ? AND r.to_id = ?)',
             ('company', c['id'], 'company', c['id'])
-        ).fetchall()
+        )
         tags = []
         for rel in rels:
             if rel['from_type'] == 'company' and rel['from_id'] == c['id']:
@@ -74,20 +116,20 @@ def index():
             else:
                 other_type, other_id = rel['from_type'], rel['from_id']
             if other_type == 'company':
-                other = db.execute('SELECT name FROM companies WHERE id = ?', (other_id,)).fetchone()
+                other = query_db('SELECT name FROM companies WHERE id = ?', (other_id,), one=True)
             else:
-                other = db.execute('SELECT name FROM individuals WHERE id = ?', (other_id,)).fetchone()
+                other = query_db('SELECT name FROM individuals WHERE id = ?', (other_id,), one=True)
             if other:
                 tags.append({'type': rel['relationship_type'], 'name': other['name']})
         company_rels[c['id']] = tags
 
     individual_rels = {}
     for i in individuals:
-        rels = db.execute(
+        rels = query_db(
             'SELECT r.relationship_type, r.from_type, r.from_id, r.to_type, r.to_id FROM relationships r '
             'WHERE (r.from_type = ? AND r.from_id = ?) OR (r.to_type = ? AND r.to_id = ?)',
             ('individual', i['id'], 'individual', i['id'])
-        ).fetchall()
+        )
         tags = []
         for rel in rels:
             if rel['from_type'] == 'individual' and rel['from_id'] == i['id']:
@@ -95,35 +137,33 @@ def index():
             else:
                 other_type, other_id = rel['from_type'], rel['from_id']
             if other_type == 'company':
-                other = db.execute('SELECT name FROM companies WHERE id = ?', (other_id,)).fetchone()
+                other = query_db('SELECT name FROM companies WHERE id = ?', (other_id,), one=True)
             else:
-                other = db.execute('SELECT name FROM individuals WHERE id = ?', (other_id,)).fetchone()
+                other = query_db('SELECT name FROM individuals WHERE id = ?', (other_id,), one=True)
             if other:
                 tags.append({'type': rel['relationship_type'], 'name': other['name']})
         individual_rels[i['id']] = tags
 
     # Load follow-ups
-    follow_ups = db.execute('SELECT * FROM follow_ups ORDER BY created_at DESC').fetchall()
+    follow_ups = query_db('SELECT * FROM follow_ups ORDER BY created_at DESC')
     follow_up_data = []
     for fu in follow_ups:
-        links = db.execute(
-            'SELECT * FROM follow_up_links WHERE follow_up_id = ?', (fu['id'],)
-        ).fetchall()
+        links = query_db('SELECT * FROM follow_up_links WHERE follow_up_id = ?', (fu['id'],))
         linked_entities = []
         for link in links:
             if link['entity_type'] == 'company':
-                entity = db.execute('SELECT id, name FROM companies WHERE id = ?', (link['entity_id'],)).fetchone()
+                entity = query_db('SELECT id, name FROM companies WHERE id = ?', (link['entity_id'],), one=True)
             else:
-                entity = db.execute('SELECT id, name FROM individuals WHERE id = ?', (link['entity_id'],)).fetchone()
+                entity = query_db('SELECT id, name FROM individuals WHERE id = ?', (link['entity_id'],), one=True)
             if entity:
                 linked_entities.append({'type': link['entity_type'], 'id': entity['id'], 'name': entity['name']})
-        comments = db.execute(
+        comments = query_db(
             'SELECT * FROM follow_up_comments WHERE follow_up_id = ? ORDER BY created_at ASC', (fu['id'],)
-        ).fetchall()
+        )
         follow_up_data.append({'follow_up': fu, 'links': linked_entities, 'comments': comments})
 
-    all_companies = db.execute('SELECT id, name FROM companies ORDER BY name').fetchall()
-    all_individuals = db.execute('SELECT id, name FROM individuals ORDER BY name').fetchall()
+    all_companies = query_db('SELECT id, name FROM companies ORDER BY name')
+    all_individuals = query_db('SELECT id, name FROM individuals ORDER BY name')
 
     return render_template('index.html', companies=companies, individuals=individuals, query=q,
                            company_rels=company_rels, individual_rels=individual_rels,
@@ -140,34 +180,33 @@ def add_company():
         if not name:
             flash('Company name is required.', 'error')
             return render_template('add_company.html')
-        db = get_db()
-        db.execute(
-            'INSERT INTO companies (name, website, type, linkedin_url, location) VALUES (?, ?, ?, ?, ?)',
+        new_id = query_db(
+            'INSERT INTO companies (name, website, type, linkedin_url, location) VALUES (?, ?, ?, ?, ?) RETURNING id',
             (name, request.form.get('website', '').strip(),
              request.form.get('type', '').strip(),
              request.form.get('linkedin_url', '').strip(),
-             request.form.get('location', '').strip())
+             request.form.get('location', '').strip()),
+            insert=True
         )
-        db.commit()
+        commit_db()
         flash('Company added.', 'success')
-        return redirect(url_for('company_detail', id=db.execute('SELECT last_insert_rowid()').fetchone()[0]))
+        return redirect(url_for('company_detail', id=new_id))
     return render_template('add_company.html')
 
 
 @app.route('/company/<int:id>')
 def company_detail(id):
-    db = get_db()
-    company = db.execute('SELECT * FROM companies WHERE id = ?', (id,)).fetchone()
+    company = query_db('SELECT * FROM companies WHERE id = ?', (id,), one=True)
     if not company:
         flash('Company not found.', 'error')
         return redirect(url_for('index'))
-    notes = db.execute(
+    notes = query_db(
         "SELECT * FROM notes WHERE entity_type = 'company' AND entity_id = ? ORDER BY created_at DESC", (id,)
-    ).fetchall()
-    relationships = db.execute(
+    )
+    relationships = query_db(
         'SELECT * FROM relationships WHERE (from_type = ? AND from_id = ?) OR (to_type = ? AND to_id = ?)',
         ('company', id, 'company', id)
-    ).fetchall()
+    )
     related = []
     for rel in relationships:
         if rel['from_type'] == 'company' and rel['from_id'] == id:
@@ -175,13 +214,13 @@ def company_detail(id):
         else:
             other_type, other_id = rel['from_type'], rel['from_id']
         if other_type == 'company':
-            other = db.execute('SELECT * FROM companies WHERE id = ?', (other_id,)).fetchone()
+            other = query_db('SELECT * FROM companies WHERE id = ?', (other_id,), one=True)
         else:
-            other = db.execute('SELECT * FROM individuals WHERE id = ?', (other_id,)).fetchone()
+            other = query_db('SELECT * FROM individuals WHERE id = ?', (other_id,), one=True)
         if other:
             related.append({'rel': rel, 'other': other, 'other_type': other_type})
-    all_companies = db.execute('SELECT id, name FROM companies WHERE id != ? ORDER BY name', (id,)).fetchall()
-    all_individuals = db.execute('SELECT id, name FROM individuals ORDER BY name').fetchall()
+    all_companies = query_db('SELECT id, name FROM companies WHERE id != ? ORDER BY name', (id,))
+    all_individuals = query_db('SELECT id, name FROM individuals ORDER BY name')
     follow_ups = get_follow_ups_for_entity('company', id)
     return render_template('company_detail.html', company=company, notes=notes, related=related,
                            all_companies=all_companies, all_individuals=all_individuals,
@@ -190,8 +229,7 @@ def company_detail(id):
 
 @app.route('/company/<int:id>/edit', methods=['GET', 'POST'])
 def edit_company(id):
-    db = get_db()
-    company = db.execute('SELECT * FROM companies WHERE id = ?', (id,)).fetchone()
+    company = query_db('SELECT * FROM companies WHERE id = ?', (id,), one=True)
     if not company:
         flash('Company not found.', 'error')
         return redirect(url_for('index'))
@@ -200,14 +238,14 @@ def edit_company(id):
         if not name:
             flash('Company name is required.', 'error')
             return render_template('edit_company.html', company=company)
-        db.execute(
+        query_db(
             'UPDATE companies SET name=?, website=?, type=?, linkedin_url=?, location=? WHERE id=?',
             (name, request.form.get('website', '').strip(),
              request.form.get('type', '').strip(),
              request.form.get('linkedin_url', '').strip(),
              request.form.get('location', '').strip(), id)
         )
-        db.commit()
+        commit_db()
         flash('Company updated.', 'success')
         return redirect(url_for('company_detail', id=id))
     return render_template('edit_company.html', company=company)
@@ -215,14 +253,13 @@ def edit_company(id):
 
 @app.route('/company/<int:id>/delete', methods=['POST'])
 def delete_company(id):
-    db = get_db()
-    db.execute('DELETE FROM companies WHERE id = ?', (id,))
-    db.execute("DELETE FROM notes WHERE entity_type = 'company' AND entity_id = ?", (id,))
-    db.execute(
+    query_db('DELETE FROM companies WHERE id = ?', (id,))
+    query_db("DELETE FROM notes WHERE entity_type = 'company' AND entity_id = ?", (id,))
+    query_db(
         "DELETE FROM relationships WHERE (from_type = 'company' AND from_id = ?) OR (to_type = 'company' AND to_id = ?)",
         (id, id)
     )
-    db.commit()
+    commit_db()
     flash('Company deleted.', 'success')
     return redirect(url_for('index'))
 
@@ -236,35 +273,34 @@ def add_individual():
         if not name:
             flash('Name is required.', 'error')
             return render_template('add_individual.html')
-        db = get_db()
-        db.execute(
-            'INSERT INTO individuals (name, title, email, phone, linkedin_url, location) VALUES (?, ?, ?, ?, ?, ?)',
+        new_id = query_db(
+            'INSERT INTO individuals (name, title, email, phone, linkedin_url, location) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
             (name, request.form.get('title', '').strip(),
              request.form.get('email', '').strip(),
              request.form.get('phone', '').strip(),
              request.form.get('linkedin_url', '').strip(),
-             request.form.get('location', '').strip())
+             request.form.get('location', '').strip()),
+            insert=True
         )
-        db.commit()
+        commit_db()
         flash('Individual added.', 'success')
-        return redirect(url_for('individual_detail', id=db.execute('SELECT last_insert_rowid()').fetchone()[0]))
+        return redirect(url_for('individual_detail', id=new_id))
     return render_template('add_individual.html')
 
 
 @app.route('/individual/<int:id>')
 def individual_detail(id):
-    db = get_db()
-    individual = db.execute('SELECT * FROM individuals WHERE id = ?', (id,)).fetchone()
+    individual = query_db('SELECT * FROM individuals WHERE id = ?', (id,), one=True)
     if not individual:
         flash('Individual not found.', 'error')
         return redirect(url_for('index'))
-    notes = db.execute(
+    notes = query_db(
         "SELECT * FROM notes WHERE entity_type = 'individual' AND entity_id = ? ORDER BY created_at DESC", (id,)
-    ).fetchall()
-    relationships = db.execute(
+    )
+    relationships = query_db(
         'SELECT * FROM relationships WHERE (from_type = ? AND from_id = ?) OR (to_type = ? AND to_id = ?)',
         ('individual', id, 'individual', id)
-    ).fetchall()
+    )
     related = []
     for rel in relationships:
         if rel['from_type'] == 'individual' and rel['from_id'] == id:
@@ -272,13 +308,13 @@ def individual_detail(id):
         else:
             other_type, other_id = rel['from_type'], rel['from_id']
         if other_type == 'company':
-            other = db.execute('SELECT * FROM companies WHERE id = ?', (other_id,)).fetchone()
+            other = query_db('SELECT * FROM companies WHERE id = ?', (other_id,), one=True)
         else:
-            other = db.execute('SELECT * FROM individuals WHERE id = ?', (other_id,)).fetchone()
+            other = query_db('SELECT * FROM individuals WHERE id = ?', (other_id,), one=True)
         if other:
             related.append({'rel': rel, 'other': other, 'other_type': other_type})
-    all_companies = db.execute('SELECT id, name FROM companies ORDER BY name').fetchall()
-    all_individuals = db.execute('SELECT id, name FROM individuals WHERE id != ? ORDER BY name', (id,)).fetchall()
+    all_companies = query_db('SELECT id, name FROM companies ORDER BY name')
+    all_individuals = query_db('SELECT id, name FROM individuals WHERE id != ? ORDER BY name', (id,))
     follow_ups = get_follow_ups_for_entity('individual', id)
     return render_template('individual_detail.html', individual=individual, notes=notes, related=related,
                            all_companies=all_companies, all_individuals=all_individuals,
@@ -287,8 +323,7 @@ def individual_detail(id):
 
 @app.route('/individual/<int:id>/edit', methods=['GET', 'POST'])
 def edit_individual(id):
-    db = get_db()
-    individual = db.execute('SELECT * FROM individuals WHERE id = ?', (id,)).fetchone()
+    individual = query_db('SELECT * FROM individuals WHERE id = ?', (id,), one=True)
     if not individual:
         flash('Individual not found.', 'error')
         return redirect(url_for('index'))
@@ -297,7 +332,7 @@ def edit_individual(id):
         if not name:
             flash('Name is required.', 'error')
             return render_template('edit_individual.html', individual=individual)
-        db.execute(
+        query_db(
             'UPDATE individuals SET name=?, title=?, email=?, phone=?, linkedin_url=?, location=? WHERE id=?',
             (name, request.form.get('title', '').strip(),
              request.form.get('email', '').strip(),
@@ -305,7 +340,7 @@ def edit_individual(id):
              request.form.get('linkedin_url', '').strip(),
              request.form.get('location', '').strip(), id)
         )
-        db.commit()
+        commit_db()
         flash('Individual updated.', 'success')
         return redirect(url_for('individual_detail', id=id))
     return render_template('edit_individual.html', individual=individual)
@@ -313,14 +348,13 @@ def edit_individual(id):
 
 @app.route('/individual/<int:id>/delete', methods=['POST'])
 def delete_individual(id):
-    db = get_db()
-    db.execute('DELETE FROM individuals WHERE id = ?', (id,))
-    db.execute("DELETE FROM notes WHERE entity_type = 'individual' AND entity_id = ?", (id,))
-    db.execute(
+    query_db('DELETE FROM individuals WHERE id = ?', (id,))
+    query_db("DELETE FROM notes WHERE entity_type = 'individual' AND entity_id = ?", (id,))
+    query_db(
         "DELETE FROM relationships WHERE (from_type = 'individual' AND from_id = ?) OR (to_type = 'individual' AND to_id = ?)",
         (id, id)
     )
-    db.commit()
+    commit_db()
     flash('Individual deleted.', 'success')
     return redirect(url_for('index'))
 
@@ -335,12 +369,11 @@ def add_note():
     if not note_text:
         flash('Note text is required.', 'error')
     else:
-        db = get_db()
-        db.execute(
+        query_db(
             'INSERT INTO notes (entity_type, entity_id, note_text) VALUES (?, ?, ?)',
             (entity_type, entity_id, note_text)
         )
-        db.commit()
+        commit_db()
         flash('Note added.', 'success')
     if entity_type == 'company':
         return redirect(url_for('company_detail', id=entity_id))
@@ -349,11 +382,10 @@ def add_note():
 
 @app.route('/note/<int:id>/delete', methods=['POST'])
 def delete_note(id):
-    db = get_db()
-    note = db.execute('SELECT * FROM notes WHERE id = ?', (id,)).fetchone()
+    note = query_db('SELECT * FROM notes WHERE id = ?', (id,), one=True)
     if note:
-        db.execute('DELETE FROM notes WHERE id = ?', (id,))
-        db.commit()
+        query_db('DELETE FROM notes WHERE id = ?', (id,))
+        commit_db()
         flash('Note deleted.', 'success')
         if note['entity_type'] == 'company':
             return redirect(url_for('company_detail', id=note['entity_id']))
@@ -374,12 +406,11 @@ def add_relationship():
     if not relationship_type:
         flash('Relationship type is required.', 'error')
     else:
-        db = get_db()
-        db.execute(
+        query_db(
             'INSERT INTO relationships (from_type, from_id, to_type, to_id, relationship_type) VALUES (?, ?, ?, ?, ?)',
             (from_type, from_id, to_type, to_id, relationship_type)
         )
-        db.commit()
+        commit_db()
         flash('Relationship added.', 'success')
     if from_type == 'company':
         return redirect(url_for('company_detail', id=from_id))
@@ -388,11 +419,10 @@ def add_relationship():
 
 @app.route('/relationship/<int:id>/delete', methods=['POST'])
 def delete_relationship(id):
-    db = get_db()
-    rel = db.execute('SELECT * FROM relationships WHERE id = ?', (id,)).fetchone()
+    rel = query_db('SELECT * FROM relationships WHERE id = ?', (id,), one=True)
     if rel:
-        db.execute('DELETE FROM relationships WHERE id = ?', (id,))
-        db.commit()
+        query_db('DELETE FROM relationships WHERE id = ?', (id,))
+        commit_db()
         flash('Relationship deleted.', 'success')
         redirect_type = request.form.get('redirect_type', rel['from_type'])
         redirect_id = int(request.form.get('redirect_id', rel['from_id']))
@@ -412,19 +442,17 @@ def add_follow_up():
     if not title:
         flash('Title is required.', 'error')
         return redirect(url_for('index'))
-    db = get_db()
-    db.execute('INSERT INTO follow_ups (title, body) VALUES (?, ?)', (title, body))
-    fu_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
-    # Link to selected entities
+    fu_id = query_db('INSERT INTO follow_ups (title, body) VALUES (?, ?) RETURNING id',
+                      (title, body), insert=True)
     linked_companies = request.form.getlist('link_companies')
     for cid in linked_companies:
-        db.execute('INSERT INTO follow_up_links (follow_up_id, entity_type, entity_id) VALUES (?, ?, ?)',
-                   (fu_id, 'company', int(cid)))
+        query_db('INSERT INTO follow_up_links (follow_up_id, entity_type, entity_id) VALUES (?, ?, ?)',
+                 (fu_id, 'company', int(cid)))
     linked_individuals = request.form.getlist('link_individuals')
     for iid in linked_individuals:
-        db.execute('INSERT INTO follow_up_links (follow_up_id, entity_type, entity_id) VALUES (?, ?, ?)',
-                   (fu_id, 'individual', int(iid)))
-    db.commit()
+        query_db('INSERT INTO follow_up_links (follow_up_id, entity_type, entity_id) VALUES (?, ?, ?)',
+                 (fu_id, 'individual', int(iid)))
+    commit_db()
     flash('Follow-up created.', 'success')
     return redirect(url_for('index'))
 
@@ -435,46 +463,43 @@ def add_follow_up_comment(id):
     if not comment_text:
         flash('Comment text is required.', 'error')
     else:
-        db = get_db()
-        db.execute('INSERT INTO follow_up_comments (follow_up_id, comment_text) VALUES (?, ?)',
-                   (id, comment_text))
-        db.commit()
+        query_db('INSERT INTO follow_up_comments (follow_up_id, comment_text) VALUES (?, ?)',
+                 (id, comment_text))
+        commit_db()
         flash('Comment added.', 'success')
     return redirect(url_for('index') + f'#follow-up-{id}')
 
 
 @app.route('/follow-up/<int:id>/delete', methods=['POST'])
 def delete_follow_up(id):
-    db = get_db()
-    db.execute('DELETE FROM follow_up_comments WHERE follow_up_id = ?', (id,))
-    db.execute('DELETE FROM follow_up_links WHERE follow_up_id = ?', (id,))
-    db.execute('DELETE FROM follow_ups WHERE id = ?', (id,))
-    db.commit()
+    query_db('DELETE FROM follow_up_comments WHERE follow_up_id = ?', (id,))
+    query_db('DELETE FROM follow_up_links WHERE follow_up_id = ?', (id,))
+    query_db('DELETE FROM follow_ups WHERE id = ?', (id,))
+    commit_db()
     flash('Follow-up deleted.', 'success')
     return redirect(url_for('index'))
 
 
 def get_follow_ups_for_entity(entity_type, entity_id):
-    db = get_db()
-    fu_ids = db.execute(
+    fu_ids = query_db(
         'SELECT follow_up_id FROM follow_up_links WHERE entity_type = ? AND entity_id = ?',
         (entity_type, entity_id)
-    ).fetchall()
+    )
     result = []
     for row in fu_ids:
-        fu = db.execute('SELECT * FROM follow_ups WHERE id = ?', (row['follow_up_id'],)).fetchone()
+        fu = query_db('SELECT * FROM follow_ups WHERE id = ?', (row['follow_up_id'],), one=True)
         if fu:
-            comments = db.execute(
+            comments = query_db(
                 'SELECT * FROM follow_up_comments WHERE follow_up_id = ? ORDER BY created_at ASC',
                 (fu['id'],)
-            ).fetchall()
-            links = db.execute('SELECT * FROM follow_up_links WHERE follow_up_id = ?', (fu['id'],)).fetchall()
+            )
+            links = query_db('SELECT * FROM follow_up_links WHERE follow_up_id = ?', (fu['id'],))
             linked_entities = []
             for link in links:
                 if link['entity_type'] == 'company':
-                    entity = db.execute('SELECT id, name FROM companies WHERE id = ?', (link['entity_id'],)).fetchone()
+                    entity = query_db('SELECT id, name FROM companies WHERE id = ?', (link['entity_id'],), one=True)
                 else:
-                    entity = db.execute('SELECT id, name FROM individuals WHERE id = ?', (link['entity_id'],)).fetchone()
+                    entity = query_db('SELECT id, name FROM individuals WHERE id = ?', (link['entity_id'],), one=True)
                 if entity:
                     linked_entities.append({'type': link['entity_type'], 'id': entity['id'], 'name': entity['name']})
             result.append({'follow_up': fu, 'links': linked_entities, 'comments': comments})
