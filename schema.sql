@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS follow_ups (
     title TEXT NOT NULL,
     body TEXT,
     sort_order INTEGER DEFAULT 0,
+    priority BOOLEAN DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

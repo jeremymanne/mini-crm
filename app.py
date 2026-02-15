@@ -606,6 +606,19 @@ def reorder():
     return jsonify({'ok': True})
 
 
+# --- Priority ---
+
+@app.route('/follow-up/<int:id>/toggle-priority', methods=['POST'])
+@login_required
+def toggle_priority(id):
+    fu = query_db('SELECT priority FROM follow_ups WHERE id = ?', (id,), one=True)
+    if fu:
+        new_val = not fu['priority']
+        query_db('UPDATE follow_ups SET priority = ? WHERE id = ?', (new_val, id))
+        commit_db()
+    return redirect(url_for('index') + f'#follow-up-{id}')
+
+
 # --- Export / Import ---
 
 def serialize_row(row):

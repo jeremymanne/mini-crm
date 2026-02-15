@@ -59,11 +59,14 @@
         {% if follow_up_data %}
         <div class="follow-up-list sortable-list" id="sortable-follow-ups">
             {% for item in follow_up_data %}
-            <div class="follow-up-card" data-id="{{ item.follow_up.id }}" id="follow-up-{{ item.follow_up.id }}">
+            <div class="follow-up-card{% if item.follow_up.priority %} follow-up-priority{% endif %}" data-id="{{ item.follow_up.id }}" id="follow-up-{{ item.follow_up.id }}">
                 <div class="follow-up-header">
                     <span class="drag-handle">&#x2630;</span>
                     <h3>{{ item.follow_up.title }}</h3>
                     <div class="follow-up-actions">
+                        <form method="post" action="{{ url_for('toggle_priority', id=item.follow_up.id) }}" class="inline-form">
+                            <button type="submit" class="btn-flag{% if item.follow_up.priority %} flagged{% endif %}" title="Toggle priority">&#9873;</button>
+                        </form>
                         <span class="meta">{{ item.follow_up.created_at }}</span>
                         <a href="{{ url_for('edit_follow_up', id=item.follow_up.id) }}" class="btn-small">Edit</a>
                         <form method="post" action="{{ url_for('delete_follow_up', id=item.follow_up.id) }}" class="inline-form"
