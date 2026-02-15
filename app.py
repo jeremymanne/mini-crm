@@ -20,8 +20,8 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 USE_POSTGRES = DATABASE_URL is not None
 
 if USE_POSTGRES:
-    import psycopg2
-    import psycopg2.extras
+    import psycopg
+    from psycopg.rows import dict_row
 
 SQLITE_PATH = os.path.join(app.root_path, 'crm.db')
 
@@ -29,8 +29,7 @@ SQLITE_PATH = os.path.join(app.root_path, 'crm.db')
 def get_db():
     if 'db' not in g:
         if USE_POSTGRES:
-            g.db = psycopg2.connect(DATABASE_URL)
-            g.db.autocommit = False
+            g.db = psycopg.connect(DATABASE_URL, row_factory=dict_row, autocommit=False)
         else:
             g.db = sqlite3.connect(SQLITE_PATH)
             g.db.row_factory = sqlite3.Row
@@ -42,8 +41,7 @@ def query_db(sql, args=(), one=False, insert=False):
     if USE_POSTGRES:
         # Convert ? placeholders to %s for postgres
         sql = sql.replace('?', '%s')
-        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute(sql, args)
+        cur = db.execute(sql, args)
         if insert:
             if 'RETURNING' in sql.upper():
                 row = cur.fetchone()
