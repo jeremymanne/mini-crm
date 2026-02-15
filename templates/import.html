@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Import Data - Mini CRM{% endblock %}
+{% block content %}
+<h1>Import Data</h1>
+<p>Upload a previously exported JSON backup file. This will <strong>replace all existing data</strong>.</p>
+<form method="post" enctype="multipart/form-data" class="entity-form" style="margin-top:1rem">
+    <div class="form-group">
+        <label for="file">Backup File (.json)</label>
+        <input type="file" id="file" name="file" accept=".json" required>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-danger" onclick="return confirm('This will replace ALL existing data. Continue?')">Import</button>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}

@@ -1,7 +1,9 @@
 import os
+import json
 import sqlite3
+from datetime import datetime
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, flash, g, session
+from flask import Flask, render_template, request, redirect, url_for, flash, g, session, jsonify, Response
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me-in-production')
@@ -550,6 +552,88 @@ def get_follow_ups_for_entity(entity_type, entity_id):
                     linked_entities.append({'type': link['entity_type'], 'id': entity['id'], 'name': entity['name']})
             result.append({'follow_up': fu, 'links': linked_entities, 'comments': comments})
     return result
+
+
+# --- Export / Import ---
+
+def serialize_row(row):
+    """Convert a database row to a JSON-safe dict."""
+    d = dict(row)
+    for k, v in d.items():
+        if isinstance(v, datetime):
+            d[k] = v.isoformat()
+    return d
+
+
+@app.route('/export')
+@login_required
+def export_data():
+    tables = ['companies', 'individuals', 'relationships', 'notes',
+              'follow_ups', 'follow_up_links', 'follow_up_comments']
+    data = {}
+    for table in tables:
+        rows = query_db(f'SELECT * FROM {table}')
+        data[table] = [serialize_row(r) for r in rows]
+    output = json.dumps(data, indent=2, default=str)
+    return Response(
+        output,
+        mimetype='application/json',
+        headers={'Content-Disposition': 'attachment;filename=mini-crm-backup.json'}
+    )
+
+
+@app.route('/import', methods=['GET', 'POST'])
+@login_required
+def import_data():
+    if request.method == 'POST':
+        file = request.files.get('file')
+        if not file:
+            flash('No file selected.', 'error')
+            return redirect(url_for('import_data'))
+        try:
+            data = json.load(file)
+        except json.JSONDecodeError:
+            flash('Invalid JSON file.', 'error')
+            return redirect(url_for('import_data'))
+
+        # Clear existing data in reverse dependency order
+        for table in ['follow_up_comments', 'follow_up_links', 'follow_ups',
+                      'notes', 'relationships', 'individuals', 'companies']:
+            query_db(f'DELETE FROM {table}')
+
+        # Insert data
+        for c in data.get('companies', []):
+            query_db('INSERT INTO companies (id, name, website, type, linkedin_url, location, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                     (c['id'], c['name'], c.get('website'), c.get('type'), c.get('linkedin_url'), c.get('location'), c.get('created_at')))
+        for i in data.get('individuals', []):
+            query_db('INSERT INTO individuals (id, name, title, email, phone, linkedin_url, location, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                     (i['id'], i['name'], i.get('title'), i.get('email'), i.get('phone'), i.get('linkedin_url'), i.get('location'), i.get('created_at')))
+        for r in data.get('relationships', []):
+            query_db('INSERT INTO relationships (id, from_type, from_id, to_type, to_id, relationship_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                     (r['id'], r['from_type'], r['from_id'], r['to_type'], r['to_id'], r['relationship_type'], r.get('created_at')))
+        for n in data.get('notes', []):
+            query_db('INSERT INTO notes (id, entity_type, entity_id, note_text, created_at) VALUES (?, ?, ?, ?, ?)',
+                     (n['id'], n['entity_type'], n['entity_id'], n['note_text'], n.get('created_at')))
+        for fu in data.get('follow_ups', []):
+            query_db('INSERT INTO follow_ups (id, title, body, created_at) VALUES (?, ?, ?, ?)',
+                     (fu['id'], fu['title'], fu.get('body'), fu.get('created_at')))
+        for fl in data.get('follow_up_links', []):
+            query_db('INSERT INTO follow_up_links (id, follow_up_id, entity_type, entity_id) VALUES (?, ?, ?, ?)',
+                     (fl['id'], fl['follow_up_id'], fl['entity_type'], fl['entity_id']))
+        for fc in data.get('follow_up_comments', []):
+            query_db('INSERT INTO follow_up_comments (id, follow_up_id, comment_text, created_at) VALUES (?, ?, ?, ?)',
+                     (fc['id'], fc['follow_up_id'], fc['comment_text'], fc.get('created_at')))
+
+        # Reset sequences for PostgreSQL
+        if USE_POSTGRES:
+            for table in ['companies', 'individuals', 'relationships', 'notes',
+                          'follow_ups', 'follow_up_links', 'follow_up_comments']:
+                query_db(f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), COALESCE((SELECT MAX(id) FROM {table}), 0) + 1, false)")
+
+        commit_db()
+        flash('Data imported successfully.', 'success')
+        return redirect(url_for('index'))
+    return render_template('import.html')
 
 
 if __name__ == '__main__':
