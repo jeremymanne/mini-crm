@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Mini CRM - Home{% endblock %}
+{% block content %}
+<div class="search-section">
+    <h1>Search</h1>
+    <form method="get" action="{{ url_for('index') }}" class="search-form">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search companies and individuals...">
+        <button type="submit">Search</button>
+    </form>
+</div>
+
+<div class="home-grid">
+    <div class="home-col home-col-narrow">
+        <h2>Companies ({{ companies|length }})</h2>
+        {% if companies %}
+        <ul class="entity-list">
+            {% for c in companies %}
+            <li>
+                <a href="{{ url_for('company_detail', id=c.id) }}">
+                    <strong>{{ c.name }}</strong>
+                    {% if c.type %}<span class="tag">{{ c.type }}</span>{% endif %}
+                    {% for rel in company_rels.get(c.id, []) %}
+                    <span class="tag tag-rel">{{ rel.name }}</span>
+                    {% endfor %}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="empty">No companies found.</p>
+        {% endif %}
+    </div>
+
+    <div class="home-col home-col-narrow">
+        <h2>Individuals ({{ individuals|length }})</h2>
+        {% if individuals %}
+        <ul class="entity-list">
+            {% for i in individuals %}
+            <li>
+                <a href="{{ url_for('individual_detail', id=i.id) }}">
+                    <strong>{{ i.name }}</strong>
+                    {% if i.title %}<span class="meta">{{ i.title }}</span>{% endif %}
+                    {% for rel in individual_rels.get(i.id, []) %}
+                    <span class="tag tag-rel">{{ rel.name }}</span>
+                    {% endfor %}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="empty">No individuals found.</p>
+        {% endif %}
+    </div>
+
+    <div class="home-col home-col-wide">
+        <h2>Notes</h2>
+        {% if follow_up_data %}
+        <div class="follow-up-list">
+            {% for item in follow_up_data %}
+            <div class="follow-up-card" id="follow-up-{{ item.follow_up.id }}">
+                <div class="follow-up-header">
+                    <h3>{{ item.follow_up.title }}</h3>
+                    <div class="follow-up-actions">
+                        <span class="meta">{{ item.follow_up.created_at }}</span>
+                        <form method="post" action="{{ url_for('delete_follow_up', id=item.follow_up.id) }}" class="inline-form"
+                              onsubmit="return confirm('Delete this follow-up?')">
+                            <button type="submit" class="btn-small btn-danger">Delete</button>
+                        </form>
+                    </div>
+                </div>
+                {% if item.follow_up.body %}
+                <p class="follow-up-body">{{ item.follow_up.body }}</p>
+                {% endif %}
+                {% if item.links %}
+                <div class="follow-up-links">
+                    {% for link in item.links %}
+                    <a href="{{ url_for('company_detail' if link.type == 'company' else 'individual_detail', id=link.id) }}"
+                       class="tag tag-link">{{ link.name }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if item.comments %}
+                <div class="follow-up-comments">
+                    {% for comment in item.comments %}
+                    <div class="follow-up-comment">
+                        <p>{{ comment.comment_text }}</p>
+                        <span class="meta">{{ comment.created_at }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <form method="post" action="{{ url_for('add_follow_up_comment', id=item.follow_up.id) }}" class="comment-form">
+                    <div class="form-row">
+                        <input type="text" name="comment_text" placeholder="Add a follow-up comment..." required>
+                        <button type="submit" class="btn">Comment</button>
+                    </div>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty">No notes yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="home-col home-col-wide">
+        <h2>New Note</h2>
+        <form method="post" action="{{ url_for('add_follow_up') }}" class="follow-up-form">
+            <div class="form-group">
+                <input type="text" name="title" placeholder="Title" required>
+            </div>
+            <div class="form-group">
+                <textarea name="body" placeholder="Details..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Link Companies</label>
+                <select name="link_companies" multiple>
+                    {% for c in all_companies %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Link Individuals</label>
+                <select name="link_individuals" multiple>
+                    {% for i in all_individuals %}
+                    <option value="{{ i.id }}">{{ i.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn">Create Note</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

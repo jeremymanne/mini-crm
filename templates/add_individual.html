@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Add Individual - Mini CRM{% endblock %}
+{% block content %}
+<h1>Add Individual</h1>
+<form method="post" class="entity-form">
+    <div class="form-group">
+        <label for="name">Name *</label>
+        <input type="text" id="name" name="name" required>
+    </div>
+    <div class="form-group">
+        <label for="title">Title</label>
+        <input type="text" id="title" name="title" placeholder="e.g. CEO, Software Engineer">
+    </div>
+    <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email">
+    </div>
+    <div class="form-group">
+        <label for="phone">Phone</label>
+        <input type="tel" id="phone" name="phone">
+    </div>
+    <div class="form-group">
+        <label for="linkedin_url">LinkedIn URL</label>
+        <input type="url" id="linkedin_url" name="linkedin_url" placeholder="https://linkedin.com/in/...">
+    </div>
+    <div class="form-group">
+        <label for="location">Location</label>
+        <input type="text" id="location" name="location">
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn">Add Individual</button>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}

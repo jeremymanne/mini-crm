@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ company.name }} - Mini CRM{% endblock %}
+{% block content %}
+<h1>Edit Company</h1>
+<form method="post" class="entity-form">
+    <div class="form-group">
+        <label for="name">Name *</label>
+        <input type="text" id="name" name="name" value="{{ company.name }}" required>
+    </div>
+    <div class="form-group">
+        <label for="type">Type</label>
+        <input type="text" id="type" name="type" value="{{ company.type or '' }}" placeholder="e.g. Client, Vendor, Partner">
+    </div>
+    <div class="form-group">
+        <label for="website">Website</label>
+        <input type="url" id="website" name="website" value="{{ company.website or '' }}" placeholder="https://...">
+    </div>
+    <div class="form-group">
+        <label for="linkedin_url">LinkedIn URL</label>
+        <input type="url" id="linkedin_url" name="linkedin_url" value="{{ company.linkedin_url or '' }}">
+    </div>
+    <div class="form-group">
+        <label for="location">Location</label>
+        <input type="text" id="location" name="location" value="{{ company.location or '' }}">
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn">Save Changes</button>
+        <a href="{{ url_for('company_detail', id=company.id) }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}{{ company.name }} - Mini CRM{% endblock %}
+{% block content %}
+<div class="detail-header">
+    <h1>{{ company.name }}</h1>
+    <div class="detail-actions">
+        <a href="{{ url_for('edit_company', id=company.id) }}" class="btn">Edit</a>
+        <form method="post" action="{{ url_for('delete_company', id=company.id) }}" class="inline-form"
+              onsubmit="return confirm('Delete this company?')">
+            <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+    </div>
+</div>
+
+<div class="detail-card">
+    <div class="detail-fields">
+        {% if company.type %}<div class="field"><label>Type</label><span>{{ company.type }}</span></div>{% endif %}
+        {% if company.website %}<div class="field"><label>Website</label><a href="{{ company.website }}" target="_blank">{{ company.website }}</a></div>{% endif %}
+        {% if company.linkedin_url %}<div class="field"><label>LinkedIn</label><a href="{{ company.linkedin_url }}" target="_blank">{{ company.linkedin_url }}</a></div>{% endif %}
+        {% if company.location %}<div class="field"><label>Location</label><span>{{ company.location }}</span></div>{% endif %}
+        <div class="field"><label>Added</label><span>{{ company.created_at }}</span></div>
+    </div>
+</div>
+
+<div class="section">
+    <h2>Relationships</h2>
+    {% if related %}
+    <ul class="relationship-list">
+        {% for r in related %}
+        <li>
+            <a href="{{ url_for('company_detail' if r.other_type == 'company' else 'individual_detail', id=r.other.id) }}">
+                {{ r.other.name }}
+            </a>
+            <span class="rel-type">{{ r.rel.relationship_type }}</span>
+            <form method="post" action="{{ url_for('delete_relationship', id=r.rel.id) }}" class="inline-form">
+                <input type="hidden" name="redirect_type" value="company">
+                <input type="hidden" name="redirect_id" value="{{ company.id }}">
+                <button type="submit" class="btn-small btn-danger">Remove</button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">No relationships yet.</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('add_relationship') }}" class="add-form">
+        <input type="hidden" name="from_type" value="company">
+        <input type="hidden" name="from_id" value="{{ company.id }}">
+        <div class="form-row">
+            <select name="to_type" id="to_type_company" onchange="updateRelTargets(this)">
+                <option value="individual">Individual</option>
+                <option value="company">Company</option>
+            </select>
+            <select name="to_id" id="to_id_company">
+                {% for i in all_individuals %}
+                <option value="{{ i.id }}">{{ i.name }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="relationship_type" placeholder="Relationship type" required>
+            <button type="submit" class="btn">Add</button>
+        </div>
+    </form>
+</div>
+
+<div class="section">
+    <h2>Notes</h2>
+    {% if notes %}
+    <ul class="notes-list">
+        {% for note in notes %}
+        <li>
+            <p>{{ note.note_text }}</p>
+            <div class="note-meta">
+                <span>{{ note.created_at }}</span>
+                <form method="post" action="{{ url_for('delete_note', id=note.id) }}" class="inline-form">
+                    <button type="submit" class="btn-small btn-danger">Delete</button>
+                </form>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">No notes yet.</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('add_note') }}" class="add-form">
+        <input type="hidden" name="entity_type" value="company">
+        <input type="hidden" name="entity_id" value="{{ company.id }}">
+        <div class="form-row">
+            <textarea name="note_text" placeholder="Add a note..." required></textarea>
+            <button type="submit" class="btn">Add Note</button>
+        </div>
+    </form>
+</div>
+
+<div class="section">
+    <h2>Follow-Ups</h2>
+    {% if follow_ups %}
+    <div class="follow-up-list">
+        {% for item in follow_ups %}
+        <div class="follow-up-card">
+            <div class="follow-up-header">
+                <h3>{{ item.follow_up.title }}</h3>
+                <span class="meta">{{ item.follow_up.created_at }}</span>
+            </div>
+            {% if item.follow_up.body %}
+            <p class="follow-up-body">{{ item.follow_up.body }}</p>
+            {% endif %}
+            {% if item.links %}
+            <div class="follow-up-links">
+                {% for link in item.links %}
+                <a href="{{ url_for('company_detail' if link.type == 'company' else 'individual_detail', id=link.id) }}"
+                   class="tag tag-link">{{ link.name }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if item.comments %}
+            <div class="follow-up-comments">
+                {% for comment in item.comments %}
+                <div class="follow-up-comment">
+                    <p>{{ comment.comment_text }}</p>
+                    <span class="meta">{{ comment.created_at }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <form method="post" action="{{ url_for('add_follow_up_comment', id=item.follow_up.id) }}" class="comment-form">
+                <div class="form-row">
+                    <input type="text" name="comment_text" placeholder="Add a follow-up comment..." required>
+                    <button type="submit" class="btn">Comment</button>
+                </div>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">No follow-ups linked to this company.</p>
+    {% endif %}
+</div>
+
+<script>
+function updateRelTargets(select) {
+    const toId = document.getElementById('to_id_company');
+    const individuals = [{% for i in all_individuals %}{ id: {{ i.id }}, name: "{{ i.name }}" },{% endfor %}];
+    const companies = [{% for c in all_companies %}{ id: {{ c.id }}, name: "{{ c.name }}" },{% endfor %}];
+    const items = select.value === 'individual' ? individuals : companies;
+    toId.innerHTML = items.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+}
+</script>
+{% endblock %}
