@@ -13,9 +13,10 @@
     <div class="home-col home-col-narrow">
         <h2>Companies ({{ companies|length }})</h2>
         {% if companies %}
-        <ul class="entity-list">
+        <ul class="entity-list sortable-list" id="sortable-companies">
             {% for c in companies %}
-            <li>
+            <li data-id="{{ c.id }}">
+                <span class="drag-handle">&#x2630;</span>
                 <a href="{{ url_for('company_detail', id=c.id) }}">
                     <strong>{{ c.name }}</strong>
                     {% if c.type %}<span class="tag">{{ c.type }}</span>{% endif %}
@@ -34,9 +35,10 @@
     <div class="home-col home-col-narrow">
         <h2>Individuals ({{ individuals|length }})</h2>
         {% if individuals %}
-        <ul class="entity-list">
+        <ul class="entity-list sortable-list" id="sortable-individuals">
             {% for i in individuals %}
-            <li>
+            <li data-id="{{ i.id }}">
+                <span class="drag-handle">&#x2630;</span>
                 <a href="{{ url_for('individual_detail', id=i.id) }}">
                     <strong>{{ i.name }}</strong>
                     {% if i.title %}<span class="meta">{{ i.title }}</span>{% endif %}
@@ -55,10 +57,11 @@
     <div class="home-col home-col-wide">
         <h2>Notes</h2>
         {% if follow_up_data %}
-        <div class="follow-up-list">
+        <div class="follow-up-list sortable-list" id="sortable-follow-ups">
             {% for item in follow_up_data %}
-            <div class="follow-up-card" id="follow-up-{{ item.follow_up.id }}">
+            <div class="follow-up-card" data-id="{{ item.follow_up.id }}" id="follow-up-{{ item.follow_up.id }}">
                 <div class="follow-up-header">
+                    <span class="drag-handle">&#x2630;</span>
                     <h3>{{ item.follow_up.title }}</h3>
                     <div class="follow-up-actions">
                         <span class="meta">{{ item.follow_up.created_at }}</span>
@@ -139,4 +142,29 @@
         </form>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+function initSortable(elId, type) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    Sortable.create(el, {
+        handle: '.drag-handle',
+        animation: 150,
+        onEnd: function() {
+            const ids = Array.from(el.children)
+                .filter(c => c.dataset.id)
+                .map(c => c.dataset.id);
+            fetch('/reorder', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({type: type, ids: ids})
+            });
+        }
+    });
+}
+initSortable('sortable-companies', 'companies');
+initSortable('sortable-individuals', 'individuals');
+initSortable('sortable-follow-ups', 'follow_ups');
+</script>
 {% endblock %}

@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS companies (
     type TEXT,
     linkedin_url TEXT,
     location TEXT,
+    sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS individuals (
     phone TEXT,
     linkedin_url TEXT,
     location TEXT,
+    sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -41,6 +43,7 @@ CREATE TABLE IF NOT EXISTS follow_ups (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     body TEXT,
+    sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

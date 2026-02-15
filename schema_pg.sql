@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS companies (
     type TEXT,
     linkedin_url TEXT,
     location TEXT,
+    sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS individuals (
     phone TEXT,
     linkedin_url TEXT,
     location TEXT,
+    sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -41,6 +43,7 @@ CREATE TABLE IF NOT EXISTS follow_ups (
     id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
     body TEXT,
+    sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -57,3 +60,10 @@ CREATE TABLE IF NOT EXISTS follow_up_comments (
     comment_text TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Add sort_order columns if they don't exist (for existing databases)
+DO $$ BEGIN
+    ALTER TABLE companies ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
+    ALTER TABLE individuals ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
+    ALTER TABLE follow_ups ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
+END $$;

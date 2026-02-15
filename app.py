@@ -131,8 +131,8 @@ def index():
             (f'%{q}%',)
         )
     else:
-        companies = query_db('SELECT * FROM companies ORDER BY created_at DESC LIMIT 20')
-        individuals = query_db('SELECT * FROM individuals ORDER BY created_at DESC LIMIT 20')
+        companies = query_db('SELECT * FROM companies ORDER BY sort_order, created_at DESC LIMIT 20')
+        individuals = query_db('SELECT * FROM individuals ORDER BY sort_order, created_at DESC LIMIT 20')
 
     # Build relationship tags for each entity
     company_rels = {}
@@ -178,7 +178,7 @@ def index():
         individual_rels[i['id']] = tags
 
     # Load follow-ups
-    follow_ups = query_db('SELECT * FROM follow_ups ORDER BY created_at DESC')
+    follow_ups = query_db('SELECT * FROM follow_ups ORDER BY sort_order, created_at DESC')
     follow_up_data = []
     for fu in follow_ups:
         links = query_db('SELECT * FROM follow_up_links WHERE follow_up_id = ?', (fu['id'],))
@@ -588,6 +588,22 @@ def get_follow_ups_for_entity(entity_type, entity_id):
                     linked_entities.append({'type': link['entity_type'], 'id': entity['id'], 'name': entity['name']})
             result.append({'follow_up': fu, 'links': linked_entities, 'comments': comments})
     return result
+
+
+# --- Reorder ---
+
+@app.route('/reorder', methods=['POST'])
+@login_required
+def reorder():
+    data = request.get_json()
+    list_type = data.get('type')
+    ids = data.get('ids', [])
+    if list_type not in ('companies', 'individuals', 'follow_ups'):
+        return jsonify({'error': 'Invalid type'}), 400
+    for i, item_id in enumerate(ids):
+        query_db(f'UPDATE {list_type} SET sort_order = ? WHERE id = ?', (i, int(item_id)))
+    commit_db()
+    return jsonify({'ok': True})
 
 
 # --- Export / Import ---
