@@ -63,13 +63,10 @@
                 <div class="follow-up-header">
                     <span class="drag-handle">&#x2630;</span>
                     <h3>{{ item.follow_up.title }}</h3>
-                    <form method="post" action="{{ url_for('toggle_priority', id=item.follow_up.id) }}" class="inline-form">
-                        <button type="submit" class="btn-flag{% if item.follow_up.priority %} flagged{% endif %}" title="Toggle priority">&#9873;</button>
-                    </form>
-                </div>
-                <div class="follow-up-meta-row">
-                    <span class="meta">{{ item.follow_up.created_at|datefmt }}</span>
                     <div class="follow-up-actions">
+                        <form method="post" action="{{ url_for('toggle_priority', id=item.follow_up.id) }}" class="inline-form">
+                            <button type="submit" class="btn-flag{% if item.follow_up.priority %} flagged{% endif %}" title="Toggle priority">&#9873;</button>
+                        </form>
                         <a href="{{ url_for('edit_follow_up', id=item.follow_up.id) }}" class="btn-small">Edit</a>
                         <form method="post" action="{{ url_for('delete_follow_up', id=item.follow_up.id) }}" class="inline-form"
                               onsubmit="return confirm('Delete this follow-up?')">
@@ -77,6 +74,7 @@
                         </form>
                     </div>
                 </div>
+                <span class="meta">{{ item.follow_up.created_at|datefmt }}</span>
                 {% if item.follow_up.body %}
                 <p class="follow-up-body">{{ item.follow_up.body }}</p>
                 {% endif %}
