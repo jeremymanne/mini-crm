@@ -63,7 +63,7 @@
     </div>
 
     <div class="home-col home-col-wide">
-        <h2 class="collapsible" onclick="toggleSection(this)"><span class="collapse-icon">&#9660;</span> Opportunities</h2>
+        <h2 class="collapsible" onclick="toggleSection(this)"><span class="collapse-icon">&#9660;</span> Opportunities <a href="{{ url_for('add_follow_up_page') }}" class="btn-small" onclick="event.stopPropagation()" style="margin-left:0.5rem">+ New</a></h2>
         <div class="collapsible-content">
         {% if follow_up_data %}
         <div class="follow-up-list sortable-list" id="sortable-follow-ups">
@@ -144,50 +144,6 @@
         </div>
     </div>
 
-    <div class="home-col home-col-wide">
-        <h2 class="collapsible" onclick="toggleSection(this)"><span class="collapse-icon">&#9660;</span> New Opportunity</h2>
-        <div class="collapsible-content">
-        <form method="post" action="{{ url_for('add_follow_up') }}" class="follow-up-form">
-            <div class="form-group">
-                <input type="text" name="title" placeholder="Name" required>
-            </div>
-            <div class="form-group">
-                <label>Type</label>
-                <select name="opp_type">
-                    <option value="Position">Position</option>
-                    <option value="Consulting">Consulting</option>
-                    <option value="TBD" selected>TBD</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <textarea name="body" placeholder="Notes..."></textarea>
-            </div>
-            <div class="form-group">
-                <label>Link Companies</label>
-                <input type="text" class="filter-input" placeholder="Search companies..." onkeyup="filterList(this, 'new-note-companies')">
-                <div class="checkbox-list" id="new-note-companies">
-                    {% for c in all_companies %}
-                    <label class="checkbox-item">
-                        <input type="checkbox" name="link_companies" value="{{ c.id }}"> {{ c.name }}
-                    </label>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Link Individuals</label>
-                <input type="text" class="filter-input" placeholder="Search individuals..." onkeyup="filterList(this, 'new-note-individuals')">
-                <div class="checkbox-list" id="new-note-individuals">
-                    {% for i in all_individuals %}
-                    <label class="checkbox-item">
-                        <input type="checkbox" name="link_individuals" value="{{ i.id }}"> {{ i.name }}
-                    </label>
-                    {% endfor %}
-                </div>
-            </div>
-            <button type="submit" class="btn">Create Opportunity</button>
-        </form>
-        </div>
-    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>

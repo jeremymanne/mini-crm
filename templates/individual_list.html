@@ -4,7 +4,10 @@
 <div class="list-page">
     <div class="list-header">
         <h1>Individuals ({{ individuals|length }})</h1>
-        <a href="{{ url_for('add_individual') }}" class="btn">Add Individual</a>
+        <div class="list-header-actions">
+            <a href="{{ url_for('company_list') }}" class="btn btn-secondary">Companies</a>
+            <a href="{{ url_for('add_individual') }}" class="btn">Add Individual</a>
+        </div>
     </div>
 
     <form method="get" action="{{ url_for('individual_list') }}" class="search-form" style="margin-bottom:1.5rem">
@@ -18,7 +21,7 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    {% for col, label in [('name', 'Name'), ('title', 'Title'), ('email', 'Email'), ('created_at', 'Created')] %}
+                    {% for col, label in [('name', 'Name'), ('title', 'Title')] %}
                     <th>
                         <a href="{{ url_for('individual_list', q=query, sort=col, order='desc' if sort == col and order == 'asc' else 'asc') }}"
                            class="sort-link{% if sort == col %} active{% endif %}">
@@ -30,6 +33,17 @@
                     </th>
                     {% endfor %}
                     <th>Relationships</th>
+                    {% for col, label in [('email', 'Email'), ('created_at', 'Created')] %}
+                    <th>
+                        <a href="{{ url_for('individual_list', q=query, sort=col, order='desc' if sort == col and order == 'asc' else 'asc') }}"
+                           class="sort-link{% if sort == col %} active{% endif %}">
+                            {{ label }}
+                            {% if sort == col %}
+                                <span class="sort-arrow">{{ '&#9650;' if order == 'asc' else '&#9660;' }}</span>
+                            {% endif %}
+                        </a>
+                    </th>
+                    {% endfor %}
                 </tr>
             </thead>
             <tbody>
@@ -37,9 +51,9 @@
                 <tr>
                     <td><a href="{{ url_for('individual_detail', id=i.id) }}">{{ i.name }}</a></td>
                     <td>{{ i.title or '' }}</td>
+                    <td>{% for name in individual_rels.get(i.id, []) %}<span class="tag tag-rel">{{ name }}</span> {% endfor %}</td>
                     <td>{% if i.email %}<a href="mailto:{{ i.email }}">{{ i.email }}</a>{% endif %}</td>
                     <td class="meta">{{ i.created_at|datefmt }}</td>
-                    <td>{% for name in individual_rels.get(i.id, []) %}<span class="tag tag-rel">{{ name }}</span> {% endfor %}</td>
                 </tr>
                 {% endfor %}
             </tbody>
