@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Mini CRM - Home{% endblock %}
+{% block title %}Jeremy's CRM - Home{% endblock %}
 {% block content %}
 <div class="search-section">
     <h1>Search</h1>
@@ -16,14 +16,16 @@
         <ul class="entity-list sortable-list" id="sortable-companies">
             {% for c in companies %}
             <li data-id="{{ c.id }}">
-                <a href="{{ url_for('company_detail', id=c.id) }}">
-                    <span class="drag-handle">&#x2630;</span>
-                    <strong>{{ c.name }}</strong>
+                <div class="entity-card">
+                    <div class="entity-card-header">
+                        <span class="drag-handle">&#x2630;</span>
+                        <a href="{{ url_for('company_detail', id=c.id) }}"><strong>{{ c.name }}</strong></a>
+                    </div>
                     {% if c.type %}<span class="tag">{{ c.type }}</span>{% endif %}
                     {% for rel in company_rels.get(c.id, []) %}
                     <span class="tag tag-rel">{{ rel.name }}</span>
                     {% endfor %}
-                </a>
+                </div>
             </li>
             {% endfor %}
         </ul>
@@ -38,14 +40,16 @@
         <ul class="entity-list sortable-list" id="sortable-individuals">
             {% for i in individuals %}
             <li data-id="{{ i.id }}">
-                <a href="{{ url_for('individual_detail', id=i.id) }}">
-                    <span class="drag-handle">&#x2630;</span>
-                    <strong>{{ i.name }}</strong>
+                <div class="entity-card">
+                    <div class="entity-card-header">
+                        <span class="drag-handle">&#x2630;</span>
+                        <a href="{{ url_for('individual_detail', id=i.id) }}"><strong>{{ i.name }}</strong></a>
+                    </div>
                     {% if i.title %}<span class="meta">{{ i.title }}</span>{% endif %}
                     {% for rel in individual_rels.get(i.id, []) %}
                     <span class="tag tag-rel">{{ rel.name }}</span>
                     {% endfor %}
-                </a>
+                </div>
             </li>
             {% endfor %}
         </ul>
@@ -90,9 +94,27 @@
                 {% if item.comments %}
                 <div class="follow-up-comments">
                     {% for comment in item.comments %}
-                    <div class="follow-up-comment">
-                        <p>{{ comment.comment_text }}</p>
-                        <span class="meta">{{ comment.created_at|datefmt }}</span>
+                    <div class="follow-up-comment" id="comment-{{ comment.id }}">
+                        <div class="comment-content">
+                            <p>{{ comment.comment_text }}</p>
+                            <div class="comment-meta">
+                                <span class="meta">{{ comment.created_at|datefmt }}</span>
+                                <div class="comment-actions">
+                                    <button type="button" class="btn-small" onclick="editComment({{ comment.id }}, this)">Edit</button>
+                                    <form method="post" action="{{ url_for('delete_follow_up_comment', id=comment.id) }}" class="inline-form"
+                                          onsubmit="return confirm('Delete this comment?')">
+                                        <button type="submit" class="btn-small btn-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <form method="post" action="{{ url_for('edit_follow_up_comment', id=comment.id) }}" class="comment-edit-form" style="display:none">
+                            <div class="form-row">
+                                <input type="text" name="comment_text" value="{{ comment.comment_text }}" required>
+                                <button type="submit" class="btn">Save</button>
+                                <button type="button" class="btn btn-secondary" onclick="cancelEditComment({{ comment.id }})">Cancel</button>
+                            </div>
+                        </form>
                     </div>
                     {% endfor %}
                 </div>
@@ -123,7 +145,8 @@
             </div>
             <div class="form-group">
                 <label>Link Companies</label>
-                <div class="checkbox-list">
+                <input type="text" class="filter-input" placeholder="Search companies..." onkeyup="filterList(this, 'new-note-companies')">
+                <div class="checkbox-list" id="new-note-companies">
                     {% for c in all_companies %}
                     <label class="checkbox-item">
                         <input type="checkbox" name="link_companies" value="{{ c.id }}"> {{ c.name }}
@@ -133,7 +156,8 @@
             </div>
             <div class="form-group">
                 <label>Link Individuals</label>
-                <div class="checkbox-list">
+                <input type="text" class="filter-input" placeholder="Search individuals..." onkeyup="filterList(this, 'new-note-individuals')">
+                <div class="checkbox-list" id="new-note-individuals">
                     {% for i in all_individuals %}
                     <label class="checkbox-item">
                         <input type="checkbox" name="link_individuals" value="{{ i.id }}"> {{ i.name }}
@@ -169,5 +193,34 @@ function initSortable(elId, type) {
 initSortable('sortable-companies', 'companies');
 initSortable('sortable-individuals', 'individuals');
 initSortable('sortable-follow-ups', 'follow_ups');
+
+function filterList(input, listId) {
+    const filter = input.value.toLowerCase();
+    const items = document.getElementById(listId).querySelectorAll('.checkbox-item');
+    items.forEach(function(item) {
+        const text = item.textContent.toLowerCase();
+        item.style.display = text.includes(filter) ? '' : 'none';
+    });
+}
+
+function filterSelect(input, selectId) {
+    const filter = input.value.toLowerCase();
+    const options = document.getElementById(selectId).options;
+    for (let i = 0; i < options.length; i++) {
+        const text = options[i].textContent.toLowerCase();
+        options[i].style.display = text.includes(filter) ? '' : 'none';
+    }
+}
+
+function editComment(commentId, btn) {
+    const commentDiv = document.getElementById('comment-' + commentId);
+    commentDiv.querySelector('.comment-content').style.display = 'none';
+    commentDiv.querySelector('.comment-edit-form').style.display = 'block';
+}
+function cancelEditComment(commentId) {
+    const commentDiv = document.getElementById('comment-' + commentId);
+    commentDiv.querySelector('.comment-content').style.display = '';
+    commentDiv.querySelector('.comment-edit-form').style.display = 'none';
+}
 </script>
 {% endblock %}

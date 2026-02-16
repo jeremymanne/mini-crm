@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ individual.name }} - Mini CRM{% endblock %}
+{% block title %}{{ individual.name }} - Jeremy's CRM{% endblock %}
 {% block content %}
 <div class="detail-header">
     <h1>{{ individual.name }}</h1>
@@ -53,11 +53,14 @@
                 <option value="company">Company</option>
                 <option value="individual">Individual</option>
             </select>
-            <select name="to_id" id="to_id_individual">
-                {% for c in all_companies %}
-                <option value="{{ c.id }}">{{ c.name }}</option>
-                {% endfor %}
-            </select>
+            <div class="select-search-wrapper">
+                <input type="text" class="filter-input" placeholder="Search..." onkeyup="filterSelect(this, 'to_id_individual')">
+                <select name="to_id" id="to_id_individual" size="4">
+                    {% for c in all_companies %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             <input type="text" name="relationship_type" placeholder="Relationship type" required>
             <button type="submit" class="btn">Add</button>
         </div>
@@ -121,9 +124,27 @@
             {% if item.comments %}
             <div class="follow-up-comments">
                 {% for comment in item.comments %}
-                <div class="follow-up-comment">
-                    <p>{{ comment.comment_text }}</p>
-                    <span class="meta">{{ comment.created_at|datefmt }}</span>
+                <div class="follow-up-comment" id="comment-{{ comment.id }}">
+                    <div class="comment-content">
+                        <p>{{ comment.comment_text }}</p>
+                        <div class="comment-meta">
+                            <span class="meta">{{ comment.created_at|datefmt }}</span>
+                            <div class="comment-actions">
+                                <button type="button" class="btn-small" onclick="editComment({{ comment.id }}, this)">Edit</button>
+                                <form method="post" action="{{ url_for('delete_follow_up_comment', id=comment.id) }}" class="inline-form"
+                                      onsubmit="return confirm('Delete this comment?')">
+                                    <button type="submit" class="btn-small btn-danger">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <form method="post" action="{{ url_for('edit_follow_up_comment', id=comment.id) }}" class="comment-edit-form" style="display:none">
+                        <div class="form-row">
+                            <input type="text" name="comment_text" value="{{ comment.comment_text }}" required>
+                            <button type="submit" class="btn">Save</button>
+                            <button type="button" class="btn btn-secondary" onclick="cancelEditComment({{ comment.id }})">Cancel</button>
+                        </div>
+                    </form>
                 </div>
                 {% endfor %}
             </div>
@@ -143,6 +164,24 @@
 </div>
 
 <script>
+function filterSelect(input, selectId) {
+    const filter = input.value.toLowerCase();
+    const options = document.getElementById(selectId).options;
+    for (let i = 0; i < options.length; i++) {
+        const text = options[i].textContent.toLowerCase();
+        options[i].style.display = text.includes(filter) ? '' : 'none';
+    }
+}
+function editComment(commentId) {
+    const commentDiv = document.getElementById('comment-' + commentId);
+    commentDiv.querySelector('.comment-content').style.display = 'none';
+    commentDiv.querySelector('.comment-edit-form').style.display = 'block';
+}
+function cancelEditComment(commentId) {
+    const commentDiv = document.getElementById('comment-' + commentId);
+    commentDiv.querySelector('.comment-content').style.display = '';
+    commentDiv.querySelector('.comment-edit-form').style.display = 'none';
+}
 function updateRelTargets(select) {
     const toId = document.getElementById('to_id_individual');
     const companies = [{% for c in all_companies %}{ id: {{ c.id }}, name: "{{ c.name }}" },{% endfor %}];

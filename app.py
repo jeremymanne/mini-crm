@@ -574,6 +574,37 @@ def add_follow_up_comment(id):
     return redirect(url_for('index') + f'#follow-up-{id}')
 
 
+@app.route('/follow-up/comment/<int:id>/edit', methods=['POST'])
+@login_required
+def edit_follow_up_comment(id):
+    comment = query_db('SELECT * FROM follow_up_comments WHERE id = ?', (id,), one=True)
+    if not comment:
+        flash('Comment not found.', 'error')
+        return redirect(url_for('index'))
+    comment_text = request.form['comment_text'].strip()
+    if not comment_text:
+        flash('Comment text is required.', 'error')
+    else:
+        query_db('UPDATE follow_up_comments SET comment_text = ? WHERE id = ?', (comment_text, id))
+        commit_db()
+        flash('Comment updated.', 'success')
+    return redirect(url_for('index') + f'#follow-up-{comment["follow_up_id"]}')
+
+
+@app.route('/follow-up/comment/<int:id>/delete', methods=['POST'])
+@login_required
+def delete_follow_up_comment(id):
+    comment = query_db('SELECT * FROM follow_up_comments WHERE id = ?', (id,), one=True)
+    if comment:
+        fu_id = comment['follow_up_id']
+        query_db('DELETE FROM follow_up_comments WHERE id = ?', (id,))
+        commit_db()
+        flash('Comment deleted.', 'success')
+        return redirect(url_for('index') + f'#follow-up-{fu_id}')
+    flash('Comment not found.', 'error')
+    return redirect(url_for('index'))
+
+
 @app.route('/follow-up/<int:id>/delete', methods=['POST'])
 @login_required
 def delete_follow_up(id):
