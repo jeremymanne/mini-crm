@@ -716,14 +716,24 @@ main {
     flex-wrap: wrap;
 }
 
-.tag-link {
-    background: #fff3e0;
-    color: #e65100;
+.tag-link-company {
+    background: #e3f2fd;
+    color: #1565c0;
     text-decoration: none;
 }
 
-.tag-link:hover {
-    background: #ffe0b2;
+.tag-link-company:hover {
+    background: #bbdefb;
+}
+
+.tag-link-individual {
+    background: #f3e5f5;
+    color: #7b1fa2;
+    text-decoration: none;
+}
+
+.tag-link-individual:hover {
+    background: #e1bee7;
 }
 
 .follow-up-comments {
@@ -764,6 +774,25 @@ main {
 
 .comment-edit-form {
     margin-top: 0.5rem;
+}
+
+.body-section {
+    margin-bottom: 0.75rem;
+}
+
+.body-display .btn-small {
+    margin-top: 0.3rem;
+}
+
+.body-edit-textarea {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    height: 80px;
+    resize: vertical;
 }
 
 /* Filter inputs */

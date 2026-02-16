@@ -38,7 +38,7 @@
                 <div class="follow-up-links">
                     {% for link in item.links %}
                     <a href="{{ url_for('company_detail' if link.type == 'company' else 'individual_detail', id=link.id) }}"
-                       class="tag tag-link">{{ link.name }}</a>
+                       class="tag tag-link-{{ link.type }}">{{ link.name }}</a>
                     {% endfor %}
                 </div>
                 {% endif %}
@@ -96,7 +96,7 @@
                 <div class="follow-up-links">
                     {% for link in item.links %}
                     <a href="{{ url_for('company_detail' if link.type == 'company' else 'individual_detail', id=link.id) }}"
-                       class="tag tag-link">{{ link.name }}</a>
+                       class="tag tag-link-{{ link.type }}">{{ link.name }}</a>
                     {% endfor %}
                 </div>
                 {% endif %}
@@ -161,15 +161,29 @@
                 <div class="follow-up-links">
                     {% for link in item.links %}
                     <a href="{{ url_for('company_detail' if link.type == 'company' else 'individual_detail', id=link.id) }}"
-                       class="tag tag-link">{{ link.name }}</a>
+                       class="tag tag-link-{{ link.type }}">{{ link.name }}</a>
                     {% endfor %}
                 </div>
                 {% endif %}
                 <div class="opp-details" id="opp-details-{{ item.follow_up.id }}" style="display:none">
                     <span class="meta">{{ item.follow_up.created_at|datefmt }}</span>
-                    {% if item.follow_up.body %}
-                    <p class="follow-up-body">{{ item.follow_up.body }}</p>
-                    {% endif %}
+                    <div class="body-section" id="body-section-{{ item.follow_up.id }}">
+                        <div class="body-display">
+                            {% if item.follow_up.body %}
+                            <p class="follow-up-body">{{ item.follow_up.body }}</p>
+                            {% else %}
+                            <p class="follow-up-body empty">No notes yet.</p>
+                            {% endif %}
+                            <button type="button" class="btn-small" onclick="editBody({{ item.follow_up.id }})">Edit Notes</button>
+                        </div>
+                        <form method="post" action="{{ url_for('update_follow_up_body', id=item.follow_up.id) }}" class="body-edit-form" style="display:none">
+                            <textarea name="body" class="body-edit-textarea">{{ item.follow_up.body or '' }}</textarea>
+                            <div class="form-row" style="margin-top:0.4rem">
+                                <button type="submit" class="btn">Save</button>
+                                <button type="button" class="btn btn-secondary" onclick="cancelEditBody({{ item.follow_up.id }})">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
 
                     {% if item.comments %}
                     <div class="follow-up-comments">
@@ -272,6 +286,17 @@ function toggleOpp(detailsId, toggleEl) {
         details.style.display = 'none';
         toggleEl.innerHTML = '&#9654;';
     }
+}
+
+function editBody(fuId) {
+    const section = document.getElementById('body-section-' + fuId);
+    section.querySelector('.body-display').style.display = 'none';
+    section.querySelector('.body-edit-form').style.display = 'block';
+}
+function cancelEditBody(fuId) {
+    const section = document.getElementById('body-section-' + fuId);
+    section.querySelector('.body-display').style.display = '';
+    section.querySelector('.body-edit-form').style.display = 'none';
 }
 
 function editComment(commentId) {

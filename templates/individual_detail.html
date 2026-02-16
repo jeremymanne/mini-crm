@@ -118,7 +118,7 @@
             <div class="follow-up-links">
                 {% for link in item.links %}
                 <a href="{{ url_for('company_detail' if link.type == 'company' else 'individual_detail', id=link.id) }}"
-                   class="tag tag-link">{{ link.name }}</a>
+                   class="tag tag-link-{{ link.type }}">{{ link.name }}</a>
                 {% endfor %}
             </div>
             {% endif %}

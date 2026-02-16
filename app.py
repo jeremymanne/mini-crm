@@ -618,6 +618,20 @@ def add_follow_up_comment(id):
     return redirect(url_for('index') + f'#follow-up-{id}')
 
 
+@app.route('/follow-up/<int:id>/update-body', methods=['POST'])
+@login_required
+def update_follow_up_body(id):
+    fu = query_db('SELECT * FROM follow_ups WHERE id = ?', (id,), one=True)
+    if not fu:
+        flash('Opportunity not found.', 'error')
+        return redirect(url_for('index'))
+    body = request.form.get('body', '').strip()
+    query_db('UPDATE follow_ups SET body = ? WHERE id = ?', (body, id))
+    commit_db()
+    flash('Notes updated.', 'success')
+    return redirect(url_for('index') + f'#follow-up-{id}')
+
+
 @app.route('/follow-up/comment/<int:id>/edit', methods=['POST'])
 @login_required
 def edit_follow_up_comment(id):
