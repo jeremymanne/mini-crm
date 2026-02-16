@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}New Opportunity - Jeremy's CRM{% endblock %}
+{% block content %}
+<h1>New Opportunity</h1>
+<form method="post" action="{{ url_for('add_follow_up') }}" class="entity-form">
+    <div class="form-group">
+        <label for="title">Name *</label>
+        <input type="text" id="title" name="title" placeholder="Opportunity name" required>
+    </div>
+    <div class="form-group">
+        <label for="opp_type">Type</label>
+        <select id="opp_type" name="opp_type">
+            <option value="Position">Position</option>
+            <option value="Consulting">Consulting</option>
+            <option value="TBD" selected>TBD</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="body">Notes</label>
+        <textarea id="body" name="body" placeholder="Notes..."></textarea>
+    </div>
+    <div class="form-group">
+        <label>Link Companies</label>
+        <input type="text" class="filter-input" placeholder="Search companies..." onkeyup="filterList(this, 'add-opp-companies')">
+        <div class="checkbox-list" id="add-opp-companies">
+            {% for c in all_companies %}
+            <label class="checkbox-item">
+                <input type="checkbox" name="link_companies" value="{{ c.id }}"> {{ c.name }}
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="form-group">
+        <label>Link Individuals</label>
+        <input type="text" class="filter-input" placeholder="Search individuals..." onkeyup="filterList(this, 'add-opp-individuals')">
+        <div class="checkbox-list" id="add-opp-individuals">
+            {% for i in all_individuals %}
+            <label class="checkbox-item">
+                <input type="checkbox" name="link_individuals" value="{{ i.id }}"> {{ i.name }}
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn">Create Opportunity</button>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+<script>
+function filterList(input, listId) {
+    const filter = input.value.toLowerCase();
+    const items = document.getElementById(listId).querySelectorAll('.checkbox-item');
+    items.forEach(function(item) {
+        const text = item.textContent.toLowerCase();
+        item.style.display = text.includes(filter) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

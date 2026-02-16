@@ -11,7 +11,8 @@
 
 <div class="home-grid">
     <div class="home-col home-col-narrow">
-        <h2>Companies ({{ companies|length }})</h2>
+        <h2 class="collapsible" onclick="toggleSection(this)"><span class="collapse-icon">&#9660;</span> Companies ({{ companies|length }}) <a href="{{ url_for('company_list') }}" class="view-all-link" onclick="event.stopPropagation()">View All</a></h2>
+        <div class="collapsible-content">
         {% if companies %}
         <ul class="entity-list sortable-list" id="sortable-companies">
             {% for c in companies %}
@@ -32,10 +33,12 @@
         {% else %}
         <p class="empty">No companies found.</p>
         {% endif %}
+        </div>
     </div>
 
     <div class="home-col home-col-narrow">
-        <h2>Individuals ({{ individuals|length }})</h2>
+        <h2 class="collapsible" onclick="toggleSection(this)"><span class="collapse-icon">&#9660;</span> Individuals ({{ individuals|length }}) <a href="{{ url_for('individual_list') }}" class="view-all-link" onclick="event.stopPropagation()">View All</a></h2>
+        <div class="collapsible-content">
         {% if individuals %}
         <ul class="entity-list sortable-list" id="sortable-individuals">
             {% for i in individuals %}
@@ -56,10 +59,12 @@
         {% else %}
         <p class="empty">No individuals found.</p>
         {% endif %}
+        </div>
     </div>
 
     <div class="home-col home-col-wide">
-        <h2>Notes</h2>
+        <h2 class="collapsible" onclick="toggleSection(this)"><span class="collapse-icon">&#9660;</span> Opportunities</h2>
+        <div class="collapsible-content">
         {% if follow_up_data %}
         <div class="follow-up-list sortable-list" id="sortable-follow-ups">
             {% for item in follow_up_data %}
@@ -67,13 +72,14 @@
                 <div class="follow-up-header">
                     <span class="drag-handle">&#x2630;</span>
                     <h3>{{ item.follow_up.title }}</h3>
+                    {% if item.follow_up.opp_type %}<span class="tag tag-opp">{{ item.follow_up.opp_type }}</span>{% endif %}
                     <div class="follow-up-actions">
                         <form method="post" action="{{ url_for('toggle_priority', id=item.follow_up.id) }}" class="inline-form">
                             <button type="submit" class="btn-flag{% if item.follow_up.priority %} flagged{% endif %}" title="Toggle priority">&#9873;</button>
                         </form>
                         <a href="{{ url_for('edit_follow_up', id=item.follow_up.id) }}" class="btn-small">Edit</a>
                         <form method="post" action="{{ url_for('delete_follow_up', id=item.follow_up.id) }}" class="inline-form"
-                              onsubmit="return confirm('Delete this follow-up?')">
+                              onsubmit="return confirm('Delete this opportunity?')">
                             <button type="submit" class="btn-small btn-danger">Delete</button>
                         </form>
                     </div>
@@ -122,7 +128,7 @@
 
                 <form method="post" action="{{ url_for('add_follow_up_comment', id=item.follow_up.id) }}" class="comment-form">
                     <div class="form-row">
-                        <input type="text" name="comment_text" placeholder="Add a follow-up comment..." required>
+                        <input type="text" name="comment_text" placeholder="Add a note..." required>
                         <button type="submit" class="btn">Comment</button>
                     </div>
                 </form>
@@ -130,18 +136,28 @@
             {% endfor %}
         </div>
         {% else %}
-        <p class="empty">No notes yet.</p>
+        <p class="empty">No opportunities yet.</p>
         {% endif %}
+        </div>
     </div>
 
     <div class="home-col home-col-wide">
-        <h2>New Note</h2>
+        <h2 class="collapsible" onclick="toggleSection(this)"><span class="collapse-icon">&#9660;</span> New Opportunity</h2>
+        <div class="collapsible-content">
         <form method="post" action="{{ url_for('add_follow_up') }}" class="follow-up-form">
             <div class="form-group">
-                <input type="text" name="title" placeholder="Title" required>
+                <input type="text" name="title" placeholder="Name" required>
             </div>
             <div class="form-group">
-                <textarea name="body" placeholder="Details..."></textarea>
+                <label>Type</label>
+                <select name="opp_type">
+                    <option value="Position">Position</option>
+                    <option value="Consulting">Consulting</option>
+                    <option value="TBD" selected>TBD</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <textarea name="body" placeholder="Notes..."></textarea>
             </div>
             <div class="form-group">
                 <label>Link Companies</label>
@@ -165,8 +181,9 @@
                     {% endfor %}
                 </div>
             </div>
-            <button type="submit" class="btn">Create Note</button>
+            <button type="submit" class="btn">Create Opportunity</button>
         </form>
+        </div>
     </div>
 </div>
 
@@ -211,6 +228,29 @@ function filterSelect(input, selectId) {
         options[i].style.display = text.includes(filter) ? '' : 'none';
     }
 }
+
+function toggleSection(header) {
+    const content = header.nextElementSibling;
+    const icon = header.querySelector('.collapse-icon');
+    const key = 'collapse-' + header.textContent.trim().split(' ')[1];
+    if (content.style.display === 'none') {
+        content.style.display = '';
+        icon.innerHTML = '&#9660;';
+        localStorage.removeItem(key);
+    } else {
+        content.style.display = 'none';
+        icon.innerHTML = '&#9654;';
+        localStorage.setItem(key, '1');
+    }
+}
+// Restore collapsed state on load
+document.querySelectorAll('.collapsible').forEach(function(header) {
+    const key = 'collapse-' + header.textContent.trim().split(' ')[1];
+    if (localStorage.getItem(key)) {
+        header.nextElementSibling.style.display = 'none';
+        header.querySelector('.collapse-icon').innerHTML = '&#9654;';
+    }
+});
 
 function editComment(commentId, btn) {
     const commentDiv = document.getElementById('comment-' + commentId);

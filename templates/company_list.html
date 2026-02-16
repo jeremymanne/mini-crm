@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Companies - Jeremy's CRM{% endblock %}
+{% block content %}
+<div class="list-page">
+    <div class="list-header">
+        <h1>Companies ({{ companies|length }})</h1>
+        <a href="{{ url_for('add_company') }}" class="btn">Add Company</a>
+    </div>
+
+    <form method="get" action="{{ url_for('company_list') }}" class="search-form" style="margin-bottom:1.5rem">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search by name, type, or location...">
+        <button type="submit">Search</button>
+        {% if query %}<a href="{{ url_for('company_list') }}" class="btn btn-secondary">Clear</a>{% endif %}
+    </form>
+
+    {% if companies %}
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    {% for col, label in [('name', 'Name'), ('type', 'Type'), ('location', 'Location'), ('created_at', 'Created')] %}
+                    <th>
+                        <a href="{{ url_for('company_list', q=query, sort=col, order='desc' if sort == col and order == 'asc' else 'asc') }}"
+                           class="sort-link{% if sort == col %} active{% endif %}">
+                            {{ label }}
+                            {% if sort == col %}
+                                <span class="sort-arrow">{{ '&#9650;' if order == 'asc' else '&#9660;' }}</span>
+                            {% endif %}
+                        </a>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in companies %}
+                <tr>
+                    <td><a href="{{ url_for('company_detail', id=c.id) }}">{{ c.name }}</a></td>
+                    <td>{% if c.type %}<span class="tag">{{ c.type }}</span>{% endif %}</td>
+                    <td>{{ c.location or '' }}</td>
+                    <td class="meta">{{ c.created_at|datefmt }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty">No companies found.</p>
+    {% endif %}
+</div>
+{% endblock %}

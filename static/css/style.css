@@ -116,6 +116,34 @@ main {
     color: #555;
 }
 
+.collapsible {
+    cursor: pointer;
+    user-select: none;
+}
+
+.collapsible:hover {
+    color: #333;
+}
+
+.collapse-icon {
+    font-size: 0.7rem;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 0.2rem;
+}
+
+.view-all-link {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: #1a73e8;
+    text-decoration: none;
+    margin-left: 0.4rem;
+}
+
+.view-all-link:hover {
+    text-decoration: underline;
+}
+
 .entity-list {
     list-style: none;
 }
@@ -192,6 +220,11 @@ main {
 .tag-rel {
     background: #e8f5e9;
     color: #2e7d32;
+}
+
+.tag-opp {
+    background: #e3f2fd;
+    color: #1565c0;
 }
 
 .meta {
@@ -729,6 +762,90 @@ main {
     border: 1px solid #ddd;
     border-radius: 6px;
     font-size: 0.9rem;
+}
+
+/* List pages */
+.list-page {
+    max-width: 1000px;
+}
+
+.list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.list-header h1 {
+    font-size: 1.5rem;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.data-table thead {
+    background: #f5f7fa;
+}
+
+.data-table th {
+    padding: 0.7rem 1rem;
+    text-align: left;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #555;
+    border-bottom: 2px solid #e0e0e0;
+    white-space: nowrap;
+}
+
+.data-table td {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.data-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.data-table td a {
+    color: #1a73e8;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.data-table td a:hover {
+    text-decoration: underline;
+}
+
+.sort-link {
+    color: #555;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.sort-link:hover {
+    color: #1a1a2e;
+}
+
+.sort-link.active {
+    color: #1a1a2e;
+    font-weight: 700;
+}
+
+.sort-arrow {
+    font-size: 0.7rem;
 }
 
 /* Responsive */

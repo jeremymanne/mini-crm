@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Individuals - Jeremy's CRM{% endblock %}
+{% block content %}
+<div class="list-page">
+    <div class="list-header">
+        <h1>Individuals ({{ individuals|length }})</h1>
+        <a href="{{ url_for('add_individual') }}" class="btn">Add Individual</a>
+    </div>
+
+    <form method="get" action="{{ url_for('individual_list') }}" class="search-form" style="margin-bottom:1.5rem">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search by name, title, email, or location...">
+        <button type="submit">Search</button>
+        {% if query %}<a href="{{ url_for('individual_list') }}" class="btn btn-secondary">Clear</a>{% endif %}
+    </form>
+
+    {% if individuals %}
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    {% for col, label in [('name', 'Name'), ('title', 'Title'), ('email', 'Email'), ('location', 'Location'), ('created_at', 'Created')] %}
+                    <th>
+                        <a href="{{ url_for('individual_list', q=query, sort=col, order='desc' if sort == col and order == 'asc' else 'asc') }}"
+                           class="sort-link{% if sort == col %} active{% endif %}">
+                            {{ label }}
+                            {% if sort == col %}
+                                <span class="sort-arrow">{{ '&#9650;' if order == 'asc' else '&#9660;' }}</span>
+                            {% endif %}
+                        </a>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in individuals %}
+                <tr>
+                    <td><a href="{{ url_for('individual_detail', id=i.id) }}">{{ i.name }}</a></td>
+                    <td>{{ i.title or '' }}</td>
+                    <td>{% if i.email %}<a href="mailto:{{ i.email }}">{{ i.email }}</a>{% endif %}</td>
+                    <td>{{ i.location or '' }}</td>
+                    <td class="meta">{{ i.created_at|datefmt }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty">No individuals found.</p>
+    {% endif %}
+</div>
+{% endblock %}

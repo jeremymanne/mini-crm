@@ -225,6 +225,48 @@ def index():
                            all_companies=all_companies, all_individuals=all_individuals)
 
 
+# --- Company List ---
+
+@app.route('/companies')
+@login_required
+def company_list():
+    q = request.args.get('q', '').strip()
+    sort = request.args.get('sort', 'name')
+    order = request.args.get('order', 'asc')
+    allowed_sorts = {'name': 'name', 'type': 'type', 'location': 'location', 'created_at': 'created_at'}
+    sort_col = allowed_sorts.get(sort, 'name')
+    sort_dir = 'DESC' if order == 'desc' else 'ASC'
+    if q:
+        companies = query_db(
+            f'SELECT * FROM companies WHERE name LIKE ? OR type LIKE ? OR location LIKE ? ORDER BY {sort_col} {sort_dir}',
+            (f'%{q}%', f'%{q}%', f'%{q}%')
+        )
+    else:
+        companies = query_db(f'SELECT * FROM companies ORDER BY {sort_col} {sort_dir}')
+    return render_template('company_list.html', companies=companies, query=q, sort=sort, order=order)
+
+
+# --- Individual List ---
+
+@app.route('/individuals')
+@login_required
+def individual_list():
+    q = request.args.get('q', '').strip()
+    sort = request.args.get('sort', 'name')
+    order = request.args.get('order', 'asc')
+    allowed_sorts = {'name': 'name', 'title': 'title', 'email': 'email', 'location': 'location', 'created_at': 'created_at'}
+    sort_col = allowed_sorts.get(sort, 'name')
+    sort_dir = 'DESC' if order == 'desc' else 'ASC'
+    if q:
+        companies = query_db(
+            f'SELECT * FROM individuals WHERE name LIKE ? OR title LIKE ? OR email LIKE ? OR location LIKE ? ORDER BY {sort_col} {sort_dir}',
+            (f'%{q}%', f'%{q}%', f'%{q}%', f'%{q}%')
+        )
+    else:
+        companies = query_db(f'SELECT * FROM individuals ORDER BY {sort_col} {sort_dir}')
+    return render_template('individual_list.html', individuals=companies, query=q, sort=sort, order=order)
+
+
 # --- Companies ---
 
 @app.route('/company/add', methods=['GET', 'POST'])
@@ -501,16 +543,25 @@ def delete_relationship(id):
 
 # --- Follow-Ups ---
 
+@app.route('/follow-up/new', methods=['GET'])
+@login_required
+def add_follow_up_page():
+    all_companies = query_db('SELECT id, name FROM companies ORDER BY name')
+    all_individuals = query_db('SELECT id, name FROM individuals ORDER BY name')
+    return render_template('add_follow_up.html', all_companies=all_companies, all_individuals=all_individuals)
+
+
 @app.route('/follow-up/add', methods=['POST'])
 @login_required
 def add_follow_up():
     title = request.form['title'].strip()
     body = request.form.get('body', '').strip()
+    opp_type = request.form.get('opp_type', 'TBD').strip()
     if not title:
-        flash('Title is required.', 'error')
+        flash('Name is required.', 'error')
         return redirect(url_for('index'))
-    fu_id = query_db('INSERT INTO follow_ups (title, body) VALUES (?, ?) RETURNING id',
-                      (title, body), insert=True)
+    fu_id = query_db('INSERT INTO follow_ups (title, body, opp_type) VALUES (?, ?, ?) RETURNING id',
+                      (title, body, opp_type), insert=True)
     linked_companies = request.form.getlist('link_companies')
     for cid in linked_companies:
         query_db('INSERT INTO follow_up_links (follow_up_id, entity_type, entity_id) VALUES (?, ?, ?)',
@@ -520,7 +571,7 @@ def add_follow_up():
         query_db('INSERT INTO follow_up_links (follow_up_id, entity_type, entity_id) VALUES (?, ?, ?)',
                  (fu_id, 'individual', int(iid)))
     commit_db()
-    flash('Follow-up created.', 'success')
+    flash('Opportunity created.', 'success')
     return redirect(url_for('index'))
 
 
@@ -529,15 +580,16 @@ def add_follow_up():
 def edit_follow_up(id):
     fu = query_db('SELECT * FROM follow_ups WHERE id = ?', (id,), one=True)
     if not fu:
-        flash('Follow-up not found.', 'error')
+        flash('Opportunity not found.', 'error')
         return redirect(url_for('index'))
     if request.method == 'POST':
         title = request.form['title'].strip()
         body = request.form.get('body', '').strip()
         if not title:
-            flash('Title is required.', 'error')
+            flash('Name is required.', 'error')
             return redirect(url_for('edit_follow_up', id=id))
-        query_db('UPDATE follow_ups SET title=?, body=? WHERE id=?', (title, body, id))
+        opp_type = request.form.get('opp_type', 'TBD').strip()
+        query_db('UPDATE follow_ups SET title=?, body=?, opp_type=? WHERE id=?', (title, body, opp_type, id))
         # Replace all links
         query_db('DELETE FROM follow_up_links WHERE follow_up_id = ?', (id,))
         for cid in request.form.getlist('link_companies'):
@@ -547,7 +599,7 @@ def edit_follow_up(id):
             query_db('INSERT INTO follow_up_links (follow_up_id, entity_type, entity_id) VALUES (?, ?, ?)',
                      (id, 'individual', int(iid)))
         commit_db()
-        flash('Follow-up updated.', 'success')
+        flash('Opportunity updated.', 'success')
         return redirect(url_for('index') + f'#follow-up-{id}')
     # Get current links
     current_links = query_db('SELECT * FROM follow_up_links WHERE follow_up_id = ?', (id,))
@@ -612,7 +664,7 @@ def delete_follow_up(id):
     query_db('DELETE FROM follow_up_links WHERE follow_up_id = ?', (id,))
     query_db('DELETE FROM follow_ups WHERE id = ?', (id,))
     commit_db()
-    flash('Follow-up deleted.', 'success')
+    flash('Opportunity deleted.', 'success')
     return redirect(url_for('index'))
 
 
@@ -732,8 +784,8 @@ def import_data():
             query_db('INSERT INTO notes (id, entity_type, entity_id, note_text, created_at) VALUES (?, ?, ?, ?, ?)',
                      (n['id'], n['entity_type'], n['entity_id'], n['note_text'], n.get('created_at')))
         for fu in data.get('follow_ups', []):
-            query_db('INSERT INTO follow_ups (id, title, body, created_at) VALUES (?, ?, ?, ?)',
-                     (fu['id'], fu['title'], fu.get('body'), fu.get('created_at')))
+            query_db('INSERT INTO follow_ups (id, title, body, opp_type, created_at) VALUES (?, ?, ?, ?, ?)',
+                     (fu['id'], fu['title'], fu.get('body'), fu.get('opp_type', 'TBD'), fu.get('created_at')))
         for fl in data.get('follow_up_links', []):
             query_db('INSERT INTO follow_up_links (id, follow_up_id, entity_type, entity_id) VALUES (?, ?, ?, ?)',
                      (fl['id'], fl['follow_up_id'], fl['entity_type'], fl['entity_id']))

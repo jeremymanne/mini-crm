@@ -1,14 +1,22 @@
 {% extends "base.html" %}
-{% block title %}Edit Note - Jeremy's CRM{% endblock %}
+{% block title %}Edit Opportunity - Jeremy's CRM{% endblock %}
 {% block content %}
-<h1>Edit Note</h1>
+<h1>Edit Opportunity</h1>
 <form method="post" class="entity-form">
     <div class="form-group">
-        <label for="title">Title *</label>
+        <label for="title">Name *</label>
         <input type="text" id="title" name="title" value="{{ follow_up.title }}" required>
     </div>
     <div class="form-group">
-        <label for="body">Details</label>
+        <label for="opp_type">Type</label>
+        <select id="opp_type" name="opp_type">
+            <option value="Position" {% if follow_up.opp_type == 'Position' %}selected{% endif %}>Position</option>
+            <option value="Consulting" {% if follow_up.opp_type == 'Consulting' %}selected{% endif %}>Consulting</option>
+            <option value="TBD" {% if follow_up.opp_type == 'TBD' or not follow_up.opp_type %}selected{% endif %}>TBD</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="body">Notes</label>
         <textarea id="body" name="body">{{ follow_up.body or '' }}</textarea>
     </div>
     <div class="form-group">

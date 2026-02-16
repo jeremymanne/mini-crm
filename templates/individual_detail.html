@@ -98,13 +98,14 @@
 </div>
 
 <div class="section">
-    <h2>Follow-Ups</h2>
+    <h2>Opportunities</h2>
     {% if follow_ups %}
     <div class="follow-up-list">
         {% for item in follow_ups %}
         <div class="follow-up-card">
             <div class="follow-up-header">
                 <h3>{{ item.follow_up.title }}</h3>
+                {% if item.follow_up.opp_type %}<span class="tag tag-opp">{{ item.follow_up.opp_type }}</span>{% endif %}
                 <div class="follow-up-actions">
                     <span class="meta">{{ item.follow_up.created_at|datefmt }}</span>
                     <a href="{{ url_for('edit_follow_up', id=item.follow_up.id) }}" class="btn-small">Edit</a>
@@ -151,7 +152,7 @@
             {% endif %}
             <form method="post" action="{{ url_for('add_follow_up_comment', id=item.follow_up.id) }}" class="comment-form">
                 <div class="form-row">
-                    <input type="text" name="comment_text" placeholder="Add a follow-up comment..." required>
+                    <input type="text" name="comment_text" placeholder="Add a note..." required>
                     <button type="submit" class="btn">Comment</button>
                 </div>
             </form>
@@ -159,7 +160,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <p class="empty">No follow-ups linked to this individual.</p>
+    <p class="empty">No opportunities linked to this individual.</p>
     {% endif %}
 </div>
 
