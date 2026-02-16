@@ -1,68 +1,80 @@
 {% extends "base.html" %}
 {% block title %}Jeremy's CRM - Home{% endblock %}
 {% block content %}
+<div class="home-links">
+    <a href="{{ url_for('company_list') }}" class="btn btn-secondary">Companies</a>
+    <a href="{{ url_for('individual_list') }}" class="btn btn-secondary">Individuals</a>
+</div>
+
 <div class="search-section">
-    <h1>Search</h1>
     <form method="get" action="{{ url_for('index') }}" class="search-form">
-        <input type="text" name="q" value="{{ query }}" placeholder="Search companies and individuals...">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search opportunities...">
         <button type="submit">Search</button>
+        {% if query %}<a href="{{ url_for('index') }}" class="btn btn-secondary">Clear</a>{% endif %}
     </form>
 </div>
 
 <div class="home-grid">
-    <div class="home-col home-col-narrow">
-        <h2 class="collapsible" onclick="toggleSection(this)"><span class="collapse-icon">&#9660;</span> Companies ({{ companies|length }}) <a href="{{ url_for('company_list') }}" class="view-all-link" onclick="event.stopPropagation()">View All</a></h2>
+    <div class="home-col">
+        <h2 class="collapsible" onclick="toggleSection(this)"><span class="collapse-icon">&#9660;</span> Priority</h2>
         <div class="collapsible-content">
-        {% if companies %}
-        <ul class="entity-list sortable-list" id="sortable-companies">
-            {% for c in companies %}
-            <li data-id="{{ c.id }}">
-                <div class="entity-card">
-                    <div class="entity-card-header">
-                        <span class="drag-handle">&#x2630;</span>
-                        <a href="{{ url_for('company_detail', id=c.id) }}"><strong>{{ c.name }}</strong></a>
+        {% if priority_data %}
+        <div class="follow-up-list sortable-list" id="sortable-priority">
+            {% for item in priority_data %}
+            <div class="follow-up-card follow-up-priority" data-id="{{ item.follow_up.id }}" id="priority-{{ item.follow_up.id }}">
+                <div class="follow-up-header">
+                    <span class="drag-handle">&#x2630;</span>
+                    <span class="priority-rank">{{ loop.index }}</span>
+                    <span class="opp-toggle" onclick="toggleOpp('priority-details-{{ item.follow_up.id }}', this)">&#9654;</span>
+                    <h3>{{ item.follow_up.title }}</h3>
+                    {% if item.follow_up.opp_type %}<span class="tag tag-opp">{{ item.follow_up.opp_type }}</span>{% endif %}
+                    <div class="follow-up-actions">
+                        <form method="post" action="{{ url_for('toggle_priority', id=item.follow_up.id) }}" class="inline-form">
+                            <button type="submit" class="btn-flag flagged" title="Remove from priority">&#9873;</button>
+                        </form>
+                        <a href="{{ url_for('edit_follow_up', id=item.follow_up.id) }}" class="btn-small">Edit</a>
                     </div>
-                    {% if c.type %}<span class="tag">{{ c.type }}</span>{% endif %}
-                    {% for rel in company_rels.get(c.id, []) %}
-                    <span class="tag tag-rel">{{ rel.name }}</span>
+                </div>
+                {% if item.links %}
+                <div class="follow-up-links">
+                    {% for link in item.links %}
+                    <a href="{{ url_for('company_detail' if link.type == 'company' else 'individual_detail', id=link.id) }}"
+                       class="tag tag-link">{{ link.name }}</a>
                     {% endfor %}
                 </div>
-            </li>
+                {% endif %}
+                <div class="opp-details" id="priority-details-{{ item.follow_up.id }}" style="display:none">
+                    <span class="meta">{{ item.follow_up.created_at|datefmt }}</span>
+                    {% if item.follow_up.body %}
+                    <p class="follow-up-body">{{ item.follow_up.body }}</p>
+                    {% endif %}
+                    {% if item.comments %}
+                    <div class="follow-up-comments">
+                        {% for comment in item.comments %}
+                        <div class="follow-up-comment">
+                            <p>{{ comment.comment_text }}</p>
+                            <span class="meta">{{ comment.created_at|datefmt }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <form method="post" action="{{ url_for('add_follow_up_comment', id=item.follow_up.id) }}" class="comment-form">
+                        <div class="form-row">
+                            <input type="text" name="comment_text" placeholder="Add a note..." required>
+                            <button type="submit" class="btn">Comment</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
             {% endfor %}
-        </ul>
+        </div>
         {% else %}
-        <p class="empty">No companies found.</p>
+        <p class="empty">Flag opportunities to add them here.</p>
         {% endif %}
         </div>
     </div>
 
-    <div class="home-col home-col-narrow">
-        <h2 class="collapsible" onclick="toggleSection(this)"><span class="collapse-icon">&#9660;</span> Individuals ({{ individuals|length }}) <a href="{{ url_for('individual_list') }}" class="view-all-link" onclick="event.stopPropagation()">View All</a></h2>
-        <div class="collapsible-content">
-        {% if individuals %}
-        <ul class="entity-list sortable-list" id="sortable-individuals">
-            {% for i in individuals %}
-            <li data-id="{{ i.id }}">
-                <div class="entity-card">
-                    <div class="entity-card-header">
-                        <span class="drag-handle">&#x2630;</span>
-                        <a href="{{ url_for('individual_detail', id=i.id) }}"><strong>{{ i.name }}</strong></a>
-                    </div>
-                    {% if i.title %}<span class="meta">{{ i.title }}</span>{% endif %}
-                    {% for rel in individual_rels.get(i.id, []) %}
-                    <span class="tag tag-rel">{{ rel.name }}</span>
-                    {% endfor %}
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <p class="empty">No individuals found.</p>
-        {% endif %}
-        </div>
-    </div>
-
-    <div class="home-col home-col-wide">
+    <div class="home-col">
         <h2 class="collapsible" onclick="toggleSection(this)"><span class="collapse-icon">&#9660;</span> Opportunities <a href="{{ url_for('add_follow_up_page') }}" class="btn-small" onclick="event.stopPropagation()" style="margin-left:0.5rem">+ New</a></h2>
         <div class="collapsible-content">
         {% if follow_up_data %}
@@ -71,7 +83,7 @@
             <div class="follow-up-card{% if item.follow_up.priority %} follow-up-priority{% endif %}" data-id="{{ item.follow_up.id }}" id="follow-up-{{ item.follow_up.id }}">
                 <div class="follow-up-header">
                     <span class="drag-handle">&#x2630;</span>
-                    <span class="opp-toggle" onclick="toggleOpp({{ item.follow_up.id }})">&#9654;</span>
+                    <span class="opp-toggle" onclick="toggleOpp('opp-details-{{ item.follow_up.id }}', this)">&#9654;</span>
                     <h3>{{ item.follow_up.title }}</h3>
                     {% if item.follow_up.opp_type %}<span class="tag tag-opp">{{ item.follow_up.opp_type }}</span>{% endif %}
                     <div class="follow-up-actions">
@@ -108,7 +120,7 @@
                                 <div class="comment-meta">
                                     <span class="meta">{{ comment.created_at|datefmt }}</span>
                                     <div class="comment-actions">
-                                        <button type="button" class="btn-small" onclick="editComment({{ comment.id }}, this)">Edit</button>
+                                        <button type="button" class="btn-small" onclick="editComment({{ comment.id }})">Edit</button>
                                         <form method="post" action="{{ url_for('delete_follow_up_comment', id=comment.id) }}" class="inline-form"
                                               onsubmit="return confirm('Delete this comment?')">
                                             <button type="submit" class="btn-small btn-danger">Delete</button>
@@ -143,7 +155,6 @@
         {% endif %}
         </div>
     </div>
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -166,27 +177,8 @@ function initSortable(elId, type) {
         }
     });
 }
-initSortable('sortable-companies', 'companies');
-initSortable('sortable-individuals', 'individuals');
 initSortable('sortable-follow-ups', 'follow_ups');
-
-function filterList(input, listId) {
-    const filter = input.value.toLowerCase();
-    const items = document.getElementById(listId).querySelectorAll('.checkbox-item');
-    items.forEach(function(item) {
-        const text = item.textContent.toLowerCase();
-        item.style.display = text.includes(filter) ? '' : 'none';
-    });
-}
-
-function filterSelect(input, selectId) {
-    const filter = input.value.toLowerCase();
-    const options = document.getElementById(selectId).options;
-    for (let i = 0; i < options.length; i++) {
-        const text = options[i].textContent.toLowerCase();
-        options[i].style.display = text.includes(filter) ? '' : 'none';
-    }
-}
+initSortable('sortable-priority', 'priority_follow_ups');
 
 function toggleSection(header) {
     const content = header.nextElementSibling;
@@ -202,7 +194,6 @@ function toggleSection(header) {
         localStorage.setItem(key, '1');
     }
 }
-// Restore collapsed state on load
 document.querySelectorAll('.collapsible').forEach(function(header) {
     const key = 'collapse-' + header.textContent.trim().split(' ')[1];
     if (localStorage.getItem(key)) {
@@ -211,20 +202,18 @@ document.querySelectorAll('.collapsible').forEach(function(header) {
     }
 });
 
-function toggleOpp(id) {
-    const details = document.getElementById('opp-details-' + id);
-    const card = document.getElementById('follow-up-' + id);
-    const toggle = card.querySelector('.opp-toggle');
+function toggleOpp(detailsId, toggleEl) {
+    const details = document.getElementById(detailsId);
     if (details.style.display === 'none') {
         details.style.display = '';
-        toggle.innerHTML = '&#9660;';
+        toggleEl.innerHTML = '&#9660;';
     } else {
         details.style.display = 'none';
-        toggle.innerHTML = '&#9654;';
+        toggleEl.innerHTML = '&#9654;';
     }
 }
 
-function editComment(commentId, btn) {
+function editComment(commentId) {
     const commentDiv = document.getElementById('comment-' + commentId);
     commentDiv.querySelector('.comment-content').style.display = 'none';
     commentDiv.querySelector('.comment-edit-form').style.display = 'block';

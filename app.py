@@ -142,87 +142,40 @@ def logout():
 @login_required
 def index():
     q = request.args.get('q', '').strip()
+
+    def load_follow_up_data(fu_list):
+        result = []
+        for fu in fu_list:
+            links = query_db('SELECT * FROM follow_up_links WHERE follow_up_id = ?', (fu['id'],))
+            linked_entities = []
+            for link in links:
+                if link['entity_type'] == 'company':
+                    entity = query_db('SELECT id, name FROM companies WHERE id = ?', (link['entity_id'],), one=True)
+                else:
+                    entity = query_db('SELECT id, name FROM individuals WHERE id = ?', (link['entity_id'],), one=True)
+                if entity:
+                    linked_entities.append({'type': link['entity_type'], 'id': entity['id'], 'name': entity['name']})
+            comments = query_db(
+                'SELECT * FROM follow_up_comments WHERE follow_up_id = ? ORDER BY created_at ASC', (fu['id'],)
+            )
+            result.append({'follow_up': fu, 'links': linked_entities, 'comments': comments})
+        return result
+
     if q:
-        companies = query_db(
-            'SELECT * FROM companies WHERE name LIKE ? ORDER BY name',
-            (f'%{q}%',)
+        follow_ups = query_db(
+            'SELECT * FROM follow_ups WHERE title LIKE ? OR body LIKE ? ORDER BY sort_order, created_at DESC',
+            (f'%{q}%', f'%{q}%')
         )
-        individuals = query_db(
-            'SELECT * FROM individuals WHERE name LIKE ? ORDER BY name',
-            (f'%{q}%',)
-        )
+        follow_up_data = load_follow_up_data(follow_ups)
+        priority_data = [item for item in follow_up_data if item['follow_up']['priority']]
     else:
-        companies = query_db('SELECT * FROM companies ORDER BY sort_order, created_at DESC LIMIT 20')
-        individuals = query_db('SELECT * FROM individuals ORDER BY sort_order, created_at DESC LIMIT 20')
+        all_follow_ups = query_db('SELECT * FROM follow_ups ORDER BY sort_order, created_at DESC')
+        priority_follow_ups = query_db('SELECT * FROM follow_ups WHERE priority = ? ORDER BY priority_order, created_at DESC', (True,))
+        follow_up_data = load_follow_up_data(all_follow_ups)
+        priority_data = load_follow_up_data(priority_follow_ups)
 
-    # Build relationship tags for each entity
-    company_rels = {}
-    for c in companies:
-        rels = query_db(
-            'SELECT r.relationship_type, r.from_type, r.from_id, r.to_type, r.to_id FROM relationships r '
-            'WHERE (r.from_type = ? AND r.from_id = ?) OR (r.to_type = ? AND r.to_id = ?)',
-            ('company', c['id'], 'company', c['id'])
-        )
-        tags = []
-        for rel in rels:
-            if rel['from_type'] == 'company' and rel['from_id'] == c['id']:
-                other_type, other_id = rel['to_type'], rel['to_id']
-            else:
-                other_type, other_id = rel['from_type'], rel['from_id']
-            if other_type == 'company':
-                other = query_db('SELECT name FROM companies WHERE id = ?', (other_id,), one=True)
-            else:
-                other = query_db('SELECT name FROM individuals WHERE id = ?', (other_id,), one=True)
-            if other:
-                tags.append({'type': rel['relationship_type'], 'name': other['name']})
-        company_rels[c['id']] = tags
-
-    individual_rels = {}
-    for i in individuals:
-        rels = query_db(
-            'SELECT r.relationship_type, r.from_type, r.from_id, r.to_type, r.to_id FROM relationships r '
-            'WHERE (r.from_type = ? AND r.from_id = ?) OR (r.to_type = ? AND r.to_id = ?)',
-            ('individual', i['id'], 'individual', i['id'])
-        )
-        tags = []
-        for rel in rels:
-            if rel['from_type'] == 'individual' and rel['from_id'] == i['id']:
-                other_type, other_id = rel['to_type'], rel['to_id']
-            else:
-                other_type, other_id = rel['from_type'], rel['from_id']
-            if other_type == 'company':
-                other = query_db('SELECT name FROM companies WHERE id = ?', (other_id,), one=True)
-            else:
-                other = query_db('SELECT name FROM individuals WHERE id = ?', (other_id,), one=True)
-            if other:
-                tags.append({'type': rel['relationship_type'], 'name': other['name']})
-        individual_rels[i['id']] = tags
-
-    # Load follow-ups
-    follow_ups = query_db('SELECT * FROM follow_ups ORDER BY sort_order, created_at DESC')
-    follow_up_data = []
-    for fu in follow_ups:
-        links = query_db('SELECT * FROM follow_up_links WHERE follow_up_id = ?', (fu['id'],))
-        linked_entities = []
-        for link in links:
-            if link['entity_type'] == 'company':
-                entity = query_db('SELECT id, name FROM companies WHERE id = ?', (link['entity_id'],), one=True)
-            else:
-                entity = query_db('SELECT id, name FROM individuals WHERE id = ?', (link['entity_id'],), one=True)
-            if entity:
-                linked_entities.append({'type': link['entity_type'], 'id': entity['id'], 'name': entity['name']})
-        comments = query_db(
-            'SELECT * FROM follow_up_comments WHERE follow_up_id = ? ORDER BY created_at ASC', (fu['id'],)
-        )
-        follow_up_data.append({'follow_up': fu, 'links': linked_entities, 'comments': comments})
-
-    all_companies = query_db('SELECT id, name FROM companies ORDER BY name')
-    all_individuals = query_db('SELECT id, name FROM individuals ORDER BY name')
-
-    return render_template('index.html', companies=companies, individuals=individuals, query=q,
-                           company_rels=company_rels, individual_rels=individual_rels,
-                           follow_up_data=follow_up_data,
-                           all_companies=all_companies, all_individuals=all_individuals)
+    return render_template('index.html', query=q,
+                           follow_up_data=follow_up_data, priority_data=priority_data)
 
 
 # --- Company List ---
@@ -738,10 +691,14 @@ def reorder():
     data = request.get_json()
     list_type = data.get('type')
     ids = data.get('ids', [])
-    if list_type not in ('companies', 'individuals', 'follow_ups'):
+    if list_type not in ('companies', 'individuals', 'follow_ups', 'priority_follow_ups'):
         return jsonify({'error': 'Invalid type'}), 400
-    for i, item_id in enumerate(ids):
-        query_db(f'UPDATE {list_type} SET sort_order = ? WHERE id = ?', (i, int(item_id)))
+    if list_type == 'priority_follow_ups':
+        for i, item_id in enumerate(ids):
+            query_db('UPDATE follow_ups SET priority_order = ? WHERE id = ?', (i, int(item_id)))
+    else:
+        for i, item_id in enumerate(ids):
+            query_db(f'UPDATE {list_type} SET sort_order = ? WHERE id = ?', (i, int(item_id)))
     commit_db()
     return jsonify({'ok': True})
 
