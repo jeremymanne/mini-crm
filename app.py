@@ -233,17 +233,35 @@ def company_list():
     q = request.args.get('q', '').strip()
     sort = request.args.get('sort', 'name')
     order = request.args.get('order', 'asc')
-    allowed_sorts = {'name': 'name', 'type': 'type', 'location': 'location', 'created_at': 'created_at'}
+    allowed_sorts = {'name': 'name', 'type': 'type', 'created_at': 'created_at'}
     sort_col = allowed_sorts.get(sort, 'name')
     sort_dir = 'DESC' if order == 'desc' else 'ASC'
     if q:
         companies = query_db(
-            f'SELECT * FROM companies WHERE name LIKE ? OR type LIKE ? OR location LIKE ? ORDER BY {sort_col} {sort_dir}',
-            (f'%{q}%', f'%{q}%', f'%{q}%')
+            f'SELECT * FROM companies WHERE name LIKE ? OR type LIKE ? ORDER BY {sort_col} {sort_dir}',
+            (f'%{q}%', f'%{q}%')
         )
     else:
         companies = query_db(f'SELECT * FROM companies ORDER BY {sort_col} {sort_dir}')
-    return render_template('company_list.html', companies=companies, query=q, sort=sort, order=order)
+    # Build relationship names for each company
+    company_rels = {}
+    for c in companies:
+        rels = query_db(
+            'SELECT r.from_type, r.from_id, r.to_type, r.to_id FROM relationships r '
+            'WHERE (r.from_type = ? AND r.from_id = ?) OR (r.to_type = ? AND r.to_id = ?)',
+            ('company', c['id'], 'company', c['id'])
+        )
+        names = []
+        for rel in rels:
+            if rel['from_type'] == 'company' and rel['from_id'] == c['id']:
+                other_type, other_id = rel['to_type'], rel['to_id']
+            else:
+                other_type, other_id = rel['from_type'], rel['from_id']
+            other = query_db(f'SELECT name FROM {"companies" if other_type == "company" else "individuals"} WHERE id = ?', (other_id,), one=True)
+            if other:
+                names.append(other['name'])
+        company_rels[c['id']] = names
+    return render_template('company_list.html', companies=companies, company_rels=company_rels, query=q, sort=sort, order=order)
 
 
 # --- Individual List ---
@@ -254,17 +272,35 @@ def individual_list():
     q = request.args.get('q', '').strip()
     sort = request.args.get('sort', 'name')
     order = request.args.get('order', 'asc')
-    allowed_sorts = {'name': 'name', 'title': 'title', 'email': 'email', 'location': 'location', 'created_at': 'created_at'}
+    allowed_sorts = {'name': 'name', 'title': 'title', 'email': 'email', 'created_at': 'created_at'}
     sort_col = allowed_sorts.get(sort, 'name')
     sort_dir = 'DESC' if order == 'desc' else 'ASC'
     if q:
-        companies = query_db(
-            f'SELECT * FROM individuals WHERE name LIKE ? OR title LIKE ? OR email LIKE ? OR location LIKE ? ORDER BY {sort_col} {sort_dir}',
-            (f'%{q}%', f'%{q}%', f'%{q}%', f'%{q}%')
+        individuals = query_db(
+            f'SELECT * FROM individuals WHERE name LIKE ? OR title LIKE ? OR email LIKE ? ORDER BY {sort_col} {sort_dir}',
+            (f'%{q}%', f'%{q}%', f'%{q}%')
         )
     else:
-        companies = query_db(f'SELECT * FROM individuals ORDER BY {sort_col} {sort_dir}')
-    return render_template('individual_list.html', individuals=companies, query=q, sort=sort, order=order)
+        individuals = query_db(f'SELECT * FROM individuals ORDER BY {sort_col} {sort_dir}')
+    # Build relationship names for each individual
+    individual_rels = {}
+    for i in individuals:
+        rels = query_db(
+            'SELECT r.from_type, r.from_id, r.to_type, r.to_id FROM relationships r '
+            'WHERE (r.from_type = ? AND r.from_id = ?) OR (r.to_type = ? AND r.to_id = ?)',
+            ('individual', i['id'], 'individual', i['id'])
+        )
+        names = []
+        for rel in rels:
+            if rel['from_type'] == 'individual' and rel['from_id'] == i['id']:
+                other_type, other_id = rel['to_type'], rel['to_id']
+            else:
+                other_type, other_id = rel['from_type'], rel['from_id']
+            other = query_db(f'SELECT name FROM {"companies" if other_type == "company" else "individuals"} WHERE id = ?', (other_id,), one=True)
+            if other:
+                names.append(other['name'])
+        individual_rels[i['id']] = names
+    return render_template('individual_list.html', individuals=individuals, individual_rels=individual_rels, query=q, sort=sort, order=order)
 
 
 # --- Companies ---

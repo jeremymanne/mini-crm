@@ -18,7 +18,7 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    {% for col, label in [('name', 'Name'), ('type', 'Type'), ('location', 'Location'), ('created_at', 'Created')] %}
+                    {% for col, label in [('name', 'Name'), ('type', 'Type'), ('created_at', 'Created')] %}
                     <th>
                         <a href="{{ url_for('company_list', q=query, sort=col, order='desc' if sort == col and order == 'asc' else 'asc') }}"
                            class="sort-link{% if sort == col %} active{% endif %}">
@@ -29,6 +29,7 @@
                         </a>
                     </th>
                     {% endfor %}
+                    <th>Relationships</th>
                 </tr>
             </thead>
             <tbody>
@@ -36,8 +37,8 @@
                 <tr>
                     <td><a href="{{ url_for('company_detail', id=c.id) }}">{{ c.name }}</a></td>
                     <td>{% if c.type %}<span class="tag">{{ c.type }}</span>{% endif %}</td>
-                    <td>{{ c.location or '' }}</td>
                     <td class="meta">{{ c.created_at|datefmt }}</td>
+                    <td>{% for name in company_rels.get(c.id, []) %}<span class="tag tag-rel">{{ name }}</span> {% endfor %}</td>
                 </tr>
                 {% endfor %}
             </tbody>

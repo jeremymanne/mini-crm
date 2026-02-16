@@ -638,6 +638,23 @@ main {
     padding: 0 0.5rem 0 0;
 }
 
+.opp-toggle {
+    cursor: pointer;
+    font-size: 0.7rem;
+    color: #888;
+    padding: 0 0.4rem 0 0;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.opp-toggle:hover {
+    color: #333;
+}
+
+.opp-details {
+    margin-top: 0.5rem;
+}
+
 .follow-up-header h3 {
     flex: 1;
     font-size: 1.05rem;

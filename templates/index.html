@@ -71,6 +71,7 @@
             <div class="follow-up-card{% if item.follow_up.priority %} follow-up-priority{% endif %}" data-id="{{ item.follow_up.id }}" id="follow-up-{{ item.follow_up.id }}">
                 <div class="follow-up-header">
                     <span class="drag-handle">&#x2630;</span>
+                    <span class="opp-toggle" onclick="toggleOpp({{ item.follow_up.id }})">&#9654;</span>
                     <h3>{{ item.follow_up.title }}</h3>
                     {% if item.follow_up.opp_type %}<span class="tag tag-opp">{{ item.follow_up.opp_type }}</span>{% endif %}
                     <div class="follow-up-actions">
@@ -84,10 +85,6 @@
                         </form>
                     </div>
                 </div>
-                <span class="meta">{{ item.follow_up.created_at|datefmt }}</span>
-                {% if item.follow_up.body %}
-                <p class="follow-up-body">{{ item.follow_up.body }}</p>
-                {% endif %}
                 {% if item.links %}
                 <div class="follow-up-links">
                     {% for link in item.links %}
@@ -96,42 +93,48 @@
                     {% endfor %}
                 </div>
                 {% endif %}
+                <div class="opp-details" id="opp-details-{{ item.follow_up.id }}" style="display:none">
+                    <span class="meta">{{ item.follow_up.created_at|datefmt }}</span>
+                    {% if item.follow_up.body %}
+                    <p class="follow-up-body">{{ item.follow_up.body }}</p>
+                    {% endif %}
 
-                {% if item.comments %}
-                <div class="follow-up-comments">
-                    {% for comment in item.comments %}
-                    <div class="follow-up-comment" id="comment-{{ comment.id }}">
-                        <div class="comment-content">
-                            <p>{{ comment.comment_text }}</p>
-                            <div class="comment-meta">
-                                <span class="meta">{{ comment.created_at|datefmt }}</span>
-                                <div class="comment-actions">
-                                    <button type="button" class="btn-small" onclick="editComment({{ comment.id }}, this)">Edit</button>
-                                    <form method="post" action="{{ url_for('delete_follow_up_comment', id=comment.id) }}" class="inline-form"
-                                          onsubmit="return confirm('Delete this comment?')">
-                                        <button type="submit" class="btn-small btn-danger">Delete</button>
-                                    </form>
+                    {% if item.comments %}
+                    <div class="follow-up-comments">
+                        {% for comment in item.comments %}
+                        <div class="follow-up-comment" id="comment-{{ comment.id }}">
+                            <div class="comment-content">
+                                <p>{{ comment.comment_text }}</p>
+                                <div class="comment-meta">
+                                    <span class="meta">{{ comment.created_at|datefmt }}</span>
+                                    <div class="comment-actions">
+                                        <button type="button" class="btn-small" onclick="editComment({{ comment.id }}, this)">Edit</button>
+                                        <form method="post" action="{{ url_for('delete_follow_up_comment', id=comment.id) }}" class="inline-form"
+                                              onsubmit="return confirm('Delete this comment?')">
+                                            <button type="submit" class="btn-small btn-danger">Delete</button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
+                            <form method="post" action="{{ url_for('edit_follow_up_comment', id=comment.id) }}" class="comment-edit-form" style="display:none">
+                                <div class="form-row">
+                                    <input type="text" name="comment_text" value="{{ comment.comment_text }}" required>
+                                    <button type="submit" class="btn">Save</button>
+                                    <button type="button" class="btn btn-secondary" onclick="cancelEditComment({{ comment.id }})">Cancel</button>
+                                </div>
+                            </form>
                         </div>
-                        <form method="post" action="{{ url_for('edit_follow_up_comment', id=comment.id) }}" class="comment-edit-form" style="display:none">
-                            <div class="form-row">
-                                <input type="text" name="comment_text" value="{{ comment.comment_text }}" required>
-                                <button type="submit" class="btn">Save</button>
-                                <button type="button" class="btn btn-secondary" onclick="cancelEditComment({{ comment.id }})">Cancel</button>
-                            </div>
-                        </form>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
+                    {% endif %}
 
-                <form method="post" action="{{ url_for('add_follow_up_comment', id=item.follow_up.id) }}" class="comment-form">
-                    <div class="form-row">
-                        <input type="text" name="comment_text" placeholder="Add a note..." required>
-                        <button type="submit" class="btn">Comment</button>
-                    </div>
-                </form>
+                    <form method="post" action="{{ url_for('add_follow_up_comment', id=item.follow_up.id) }}" class="comment-form">
+                        <div class="form-row">
+                            <input type="text" name="comment_text" placeholder="Add a note..." required>
+                            <button type="submit" class="btn">Comment</button>
+                        </div>
+                    </form>
+                </div>
             </div>
             {% endfor %}
         </div>
@@ -251,6 +254,19 @@ document.querySelectorAll('.collapsible').forEach(function(header) {
         header.querySelector('.collapse-icon').innerHTML = '&#9654;';
     }
 });
+
+function toggleOpp(id) {
+    const details = document.getElementById('opp-details-' + id);
+    const card = document.getElementById('follow-up-' + id);
+    const toggle = card.querySelector('.opp-toggle');
+    if (details.style.display === 'none') {
+        details.style.display = '';
+        toggle.innerHTML = '&#9660;';
+    } else {
+        details.style.display = 'none';
+        toggle.innerHTML = '&#9654;';
+    }
+}
 
 function editComment(commentId, btn) {
     const commentDiv = document.getElementById('comment-' + commentId);
