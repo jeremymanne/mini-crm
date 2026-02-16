@@ -167,15 +167,18 @@ def index():
             (f'%{q}%', f'%{q}%')
         )
         follow_up_data = load_follow_up_data(follow_ups)
-        priority_data = [item for item in follow_up_data if item['follow_up']['priority']]
+        priority_data = [item for item in follow_up_data if item['follow_up']['priority_level'] == 2]
+        watch_data = [item for item in follow_up_data if item['follow_up']['priority_level'] == 1]
     else:
         all_follow_ups = query_db('SELECT * FROM follow_ups ORDER BY sort_order, created_at DESC')
-        priority_follow_ups = query_db('SELECT * FROM follow_ups WHERE priority = ? ORDER BY priority_order, created_at DESC', (True,))
+        priority_follow_ups = query_db('SELECT * FROM follow_ups WHERE priority_level = 2 ORDER BY priority_order, created_at DESC')
+        watch_follow_ups = query_db('SELECT * FROM follow_ups WHERE priority_level = 1 ORDER BY priority_order, created_at DESC')
         follow_up_data = load_follow_up_data(all_follow_ups)
         priority_data = load_follow_up_data(priority_follow_ups)
+        watch_data = load_follow_up_data(watch_follow_ups)
 
     return render_template('index.html', query=q,
-                           follow_up_data=follow_up_data, priority_data=priority_data)
+                           follow_up_data=follow_up_data, priority_data=priority_data, watch_data=watch_data)
 
 
 # --- Company List ---
@@ -691,9 +694,9 @@ def reorder():
     data = request.get_json()
     list_type = data.get('type')
     ids = data.get('ids', [])
-    if list_type not in ('companies', 'individuals', 'follow_ups', 'priority_follow_ups'):
+    if list_type not in ('companies', 'individuals', 'follow_ups', 'priority_follow_ups', 'watch_follow_ups'):
         return jsonify({'error': 'Invalid type'}), 400
-    if list_type == 'priority_follow_ups':
+    if list_type in ('priority_follow_ups', 'watch_follow_ups'):
         for i, item_id in enumerate(ids):
             query_db('UPDATE follow_ups SET priority_order = ? WHERE id = ?', (i, int(item_id)))
     else:
@@ -705,13 +708,14 @@ def reorder():
 
 # --- Priority ---
 
-@app.route('/follow-up/<int:id>/toggle-priority', methods=['POST'])
+@app.route('/follow-up/<int:id>/set-priority/<int:level>', methods=['POST'])
 @login_required
-def toggle_priority(id):
-    fu = query_db('SELECT priority FROM follow_ups WHERE id = ?', (id,), one=True)
+def set_priority(id, level):
+    fu = query_db('SELECT priority_level FROM follow_ups WHERE id = ?', (id,), one=True)
     if fu:
-        new_val = not fu['priority']
-        query_db('UPDATE follow_ups SET priority = ? WHERE id = ?', (new_val, id))
+        # If already at this level, toggle off; otherwise set to the new level
+        new_level = 0 if fu['priority_level'] == level else level
+        query_db('UPDATE follow_ups SET priority_level = ? WHERE id = ?', (new_level, id))
         commit_db()
     return redirect(url_for('index') + f'#follow-up-{id}')
 

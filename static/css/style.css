@@ -117,6 +117,13 @@ main {
     align-items: start;
 }
 
+.home-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.5fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
 .home-col h2 {
     font-size: 1.1rem;
     margin-bottom: 0.75rem;
@@ -612,8 +619,13 @@ main {
 }
 
 .follow-up-priority {
-    border-left: 4px solid #e65100;
-    background: #fff8f0;
+    border-left: 4px solid #c62828;
+    background: #fff5f5;
+}
+
+.follow-up-watch {
+    border-left: 4px solid #f9a825;
+    background: #fffde7;
 }
 
 .btn-flag {
@@ -627,11 +639,15 @@ main {
 }
 
 .btn-flag:hover {
-    color: #e65100;
+    color: #c62828;
 }
 
-.btn-flag.flagged {
-    color: #e65100;
+.btn-flag.flagged-red {
+    color: #c62828;
+}
+
+.btn-flag.flagged-yellow {
+    color: #f9a825;
 }
 
 .follow-up-header {
@@ -666,20 +682,6 @@ main {
     margin-top: 0.5rem;
 }
 
-.priority-rank {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.4rem;
-    height: 1.4rem;
-    background: #e65100;
-    color: #fff;
-    border-radius: 50%;
-    font-size: 0.75rem;
-    font-weight: 700;
-    flex-shrink: 0;
-    margin-right: 0.3rem;
-}
 
 .follow-up-header h3 {
     flex: 1;
@@ -897,6 +899,12 @@ main {
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+    .home-grid-3 {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 768px) {
     .home-grid {
         grid-template-columns: 1fr;

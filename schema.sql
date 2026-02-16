@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS follow_ups (
     body TEXT,
     opp_type TEXT DEFAULT 'TBD',
     sort_order INTEGER DEFAULT 0,
-    priority BOOLEAN DEFAULT 0,
+    priority_level INTEGER DEFAULT 0,
     priority_order INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

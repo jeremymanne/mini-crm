@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS follow_ups (
     body TEXT,
     opp_type TEXT DEFAULT 'TBD',
     sort_order INTEGER DEFAULT 0,
-    priority BOOLEAN DEFAULT FALSE,
+    priority_level INTEGER DEFAULT 0,
     priority_order INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -72,4 +72,6 @@ DO $$ BEGIN
     ALTER TABLE follow_ups ADD COLUMN IF NOT EXISTS priority BOOLEAN DEFAULT FALSE;
     ALTER TABLE follow_ups ADD COLUMN IF NOT EXISTS opp_type TEXT DEFAULT 'TBD';
     ALTER TABLE follow_ups ADD COLUMN IF NOT EXISTS priority_order INTEGER DEFAULT 0;
+    ALTER TABLE follow_ups ADD COLUMN IF NOT EXISTS priority_level INTEGER DEFAULT 0;
+    UPDATE follow_ups SET priority_level = 2 WHERE priority = TRUE AND (priority_level IS NULL OR priority_level = 0);
 END $$;
