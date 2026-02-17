@@ -18,8 +18,12 @@
         </select>
     </div>
     <div class="form-group">
-        <label for="value">Value ($)</label>
-        <input type="number" id="value" name="value" step="0.01" min="0" value="{{ proposal.value if proposal.value is not none else '' }}">
+        <label for="onboarding_fee">Onboarding Fee ($)</label>
+        <input type="number" id="onboarding_fee" name="onboarding_fee" step="0.01" min="0" value="{{ proposal.onboarding_fee if proposal.onboarding_fee is not none else '' }}">
+    </div>
+    <div class="form-group">
+        <label for="monthly_retainer">Monthly Retainer ($)</label>
+        <input type="number" id="monthly_retainer" name="monthly_retainer" step="0.01" min="0" value="{{ proposal.monthly_retainer if proposal.monthly_retainer is not none else '' }}">
     </div>
     <div class="form-group">
         <label for="status">Status</label>

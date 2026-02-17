@@ -68,7 +68,8 @@ CREATE TABLE IF NOT EXISTS proposals (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     follow_up_id INTEGER REFERENCES follow_ups(id),
-    value REAL,
+    onboarding_fee REAL,
+    monthly_retainer REAL,
     status TEXT DEFAULT 'Draft',
     date_sent TEXT,
     notes TEXT,
@@ -90,4 +91,11 @@ DO $$ BEGIN
     ALTER TABLE follow_ups ADD COLUMN IF NOT EXISTS priority_order INTEGER DEFAULT 0;
     ALTER TABLE follow_ups ADD COLUMN IF NOT EXISTS priority_level INTEGER DEFAULT 0;
     UPDATE follow_ups SET priority_level = 2 WHERE priority = TRUE AND (priority_level IS NULL OR priority_level = 0);
+    -- Migrate proposals: rename value to onboarding_fee, add monthly_retainer
+    ALTER TABLE proposals ADD COLUMN IF NOT EXISTS onboarding_fee REAL;
+    ALTER TABLE proposals ADD COLUMN IF NOT EXISTS monthly_retainer REAL;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='proposals' AND column_name='value') THEN
+        UPDATE proposals SET onboarding_fee = value WHERE onboarding_fee IS NULL AND value IS NOT NULL;
+        ALTER TABLE proposals DROP COLUMN value;
+    END IF;
 END $$;

@@ -43,6 +43,13 @@
                     {% endfor %}
                 </div>
                 {% endif %}
+                {% if item.proposals %}
+                <div class="follow-up-links">
+                    {% for prop in item.proposals %}
+                    <a href="{{ url_for('edit_proposal', id=prop.id) }}" class="tag tag-link-proposal">{{ prop.name }} ({{ prop.status }})</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
                 <div class="opp-details" id="pri-details-{{ item.follow_up.id }}" style="display:none">
                     <span class="meta">{{ item.follow_up.created_at|datefmt }}</span>
                     {% if item.follow_up.body %}
@@ -98,6 +105,13 @@
                     {% for link in item.links %}
                     <a href="{{ url_for('company_detail' if link.type == 'company' else 'individual_detail', id=link.id) }}"
                        class="tag tag-link-{{ link.type }}">{{ link.name }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if item.proposals %}
+                <div class="follow-up-links">
+                    {% for prop in item.proposals %}
+                    <a href="{{ url_for('edit_proposal', id=prop.id) }}" class="tag tag-link-proposal">{{ prop.name }} ({{ prop.status }})</a>
                     {% endfor %}
                 </div>
                 {% endif %}
@@ -163,6 +177,13 @@
                     {% for link in item.links %}
                     <a href="{{ url_for('company_detail' if link.type == 'company' else 'individual_detail', id=link.id) }}"
                        class="tag tag-link-{{ link.type }}">{{ link.name }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if item.proposals %}
+                <div class="follow-up-links">
+                    {% for prop in item.proposals %}
+                    <a href="{{ url_for('edit_proposal', id=prop.id) }}" class="tag tag-link-proposal">{{ prop.name }} ({{ prop.status }})</a>
                     {% endfor %}
                 </div>
                 {% endif %}

@@ -747,6 +747,16 @@ main {
     background: #e1bee7;
 }
 
+.tag-link-proposal {
+    background: #e8eaf6;
+    color: #3949ab;
+    text-decoration: none;
+}
+
+.tag-link-proposal:hover {
+    background: #c5cae9;
+}
+
 .follow-up-comments {
     border-top: 1px solid #f0f0f0;
     margin-top: 0.75rem;

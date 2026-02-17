@@ -158,7 +158,10 @@ def index():
             comments = query_db(
                 'SELECT * FROM follow_up_comments WHERE follow_up_id = ? ORDER BY created_at ASC', (fu['id'],)
             )
-            result.append({'follow_up': fu, 'links': linked_entities, 'comments': comments})
+            linked_proposals = query_db(
+                'SELECT id, name, status FROM proposals WHERE follow_up_id = ?', (fu['id'],)
+            )
+            result.append({'follow_up': fu, 'links': linked_entities, 'comments': comments, 'proposals': linked_proposals})
         return result
 
     if q:
@@ -742,8 +745,10 @@ def add_proposal():
         follow_up_id = request.form.get('follow_up_id') or None
         if follow_up_id:
             follow_up_id = int(follow_up_id)
-        value = request.form.get('value', '').strip()
-        value = float(value) if value else None
+        onboarding_fee = request.form.get('onboarding_fee', '').strip()
+        onboarding_fee = float(onboarding_fee) if onboarding_fee else None
+        monthly_retainer = request.form.get('monthly_retainer', '').strip()
+        monthly_retainer = float(monthly_retainer) if monthly_retainer else None
         status = request.form.get('status', 'Draft')
         date_sent = request.form.get('date_sent', '').strip() or None
         notes = request.form.get('notes', '').strip() or None
@@ -752,9 +757,9 @@ def add_proposal():
         contact_person = request.form.get('contact_person', '').strip() or None
         follow_up_date = request.form.get('follow_up_date', '').strip() or None
         query_db(
-            'INSERT INTO proposals (name, follow_up_id, value, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
-            (name, follow_up_id, value, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date),
+            'INSERT INTO proposals (name, follow_up_id, onboarding_fee, monthly_retainer, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
+            (name, follow_up_id, onboarding_fee, monthly_retainer, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date),
             insert=True
         )
         commit_db()
@@ -782,8 +787,10 @@ def edit_proposal(id):
         follow_up_id = request.form.get('follow_up_id') or None
         if follow_up_id:
             follow_up_id = int(follow_up_id)
-        value = request.form.get('value', '').strip()
-        value = float(value) if value else None
+        onboarding_fee = request.form.get('onboarding_fee', '').strip()
+        onboarding_fee = float(onboarding_fee) if onboarding_fee else None
+        monthly_retainer = request.form.get('monthly_retainer', '').strip()
+        monthly_retainer = float(monthly_retainer) if monthly_retainer else None
         status = request.form.get('status', 'Draft')
         date_sent = request.form.get('date_sent', '').strip() or None
         notes = request.form.get('notes', '').strip() or None
@@ -792,8 +799,8 @@ def edit_proposal(id):
         contact_person = request.form.get('contact_person', '').strip() or None
         follow_up_date = request.form.get('follow_up_date', '').strip() or None
         query_db(
-            'UPDATE proposals SET name=?, follow_up_id=?, value=?, status=?, date_sent=?, notes=?, scope_of_work=?, timeline=?, contact_person=?, follow_up_date=? WHERE id=?',
-            (name, follow_up_id, value, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date, id)
+            'UPDATE proposals SET name=?, follow_up_id=?, onboarding_fee=?, monthly_retainer=?, status=?, date_sent=?, notes=?, scope_of_work=?, timeline=?, contact_person=?, follow_up_date=? WHERE id=?',
+            (name, follow_up_id, onboarding_fee, monthly_retainer, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date, id)
         )
         commit_db()
         flash('Proposal updated.', 'success')
@@ -939,10 +946,10 @@ def import_data():
             query_db('INSERT INTO follow_up_comments (id, follow_up_id, comment_text, created_at) VALUES (?, ?, ?, ?)',
                      (fc['id'], fc['follow_up_id'], fc['comment_text'], fc.get('created_at')))
         for pr in data.get('proposals', []):
-            query_db('INSERT INTO proposals (id, name, follow_up_id, value, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                     (pr['id'], pr['name'], pr.get('follow_up_id'), pr.get('value'), pr.get('status', 'Draft'),
-                      pr.get('date_sent'), pr.get('notes'), pr.get('scope_of_work'), pr.get('timeline'),
-                      pr.get('contact_person'), pr.get('follow_up_date'), pr.get('sort_order', 0), pr.get('created_at')))
+            query_db('INSERT INTO proposals (id, name, follow_up_id, onboarding_fee, monthly_retainer, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                     (pr['id'], pr['name'], pr.get('follow_up_id'), pr.get('onboarding_fee'), pr.get('monthly_retainer'),
+                      pr.get('status', 'Draft'), pr.get('date_sent'), pr.get('notes'), pr.get('scope_of_work'),
+                      pr.get('timeline'), pr.get('contact_person'), pr.get('follow_up_date'), pr.get('sort_order', 0), pr.get('created_at')))
 
         # Reset sequences for PostgreSQL
         if USE_POSTGRES:
