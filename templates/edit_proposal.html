@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Edit Proposal - Jeremy's CRM{% endblock %}
+{% block content %}
+<h1>Edit Proposal</h1>
+<form method="post" action="{{ url_for('edit_proposal', id=proposal.id) }}" class="entity-form">
+    <div class="form-group">
+        <label for="name">Proposal Name *</label>
+        <input type="text" id="name" name="name" value="{{ proposal.name }}" required>
+    </div>
+    <div class="form-group">
+        <label for="follow_up_id">Linked Opportunity</label>
+        <input type="text" class="filter-input" placeholder="Search opportunities..." onkeyup="filterSelect(this, 'follow_up_id')">
+        <select id="follow_up_id" name="follow_up_id">
+            <option value="">-- None --</option>
+            {% for fu in follow_ups %}
+            <option value="{{ fu.id }}" {% if proposal.follow_up_id == fu.id %}selected{% endif %}>{{ fu.title }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="value">Value ($)</label>
+        <input type="number" id="value" name="value" step="0.01" min="0" value="{{ proposal.value if proposal.value is not none else '' }}">
+    </div>
+    <div class="form-group">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+            {% for s in ['Draft', 'Sent', 'Negotiating', 'Won', 'Lost'] %}
+            <option value="{{ s }}" {% if proposal.status == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="contact_person">Contact Person</label>
+        <input type="text" id="contact_person" name="contact_person" value="{{ proposal.contact_person or '' }}">
+    </div>
+    <div class="form-group">
+        <label for="date_sent">Date Sent</label>
+        <input type="date" id="date_sent" name="date_sent" value="{{ proposal.date_sent or '' }}">
+    </div>
+    <div class="form-group">
+        <label for="follow_up_date">Follow-up Date</label>
+        <input type="date" id="follow_up_date" name="follow_up_date" value="{{ proposal.follow_up_date or '' }}">
+    </div>
+    <div class="form-group">
+        <label for="scope_of_work">Scope of Work</label>
+        <textarea id="scope_of_work" name="scope_of_work">{{ proposal.scope_of_work or '' }}</textarea>
+    </div>
+    <div class="form-group">
+        <label for="timeline">Timeline</label>
+        <input type="text" id="timeline" name="timeline" value="{{ proposal.timeline or '' }}">
+    </div>
+    <div class="form-group">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes">{{ proposal.notes or '' }}</textarea>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn">Save Changes</button>
+        <a href="{{ url_for('proposals') }}" class="btn btn-secondary">Cancel</a>
+        <form method="post" action="{{ url_for('delete_proposal', id=proposal.id) }}" class="inline-form" onsubmit="return confirm('Delete this proposal?')">
+            <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+    </div>
+</form>
+<script>
+function filterSelect(input, selectId) {
+    var filter = input.value.toLowerCase();
+    var select = document.getElementById(selectId);
+    var options = select.querySelectorAll('option');
+    options.forEach(function(opt) {
+        if (!opt.value) return;
+        opt.style.display = opt.textContent.toLowerCase().includes(filter) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

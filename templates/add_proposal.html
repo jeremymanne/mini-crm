@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}New Proposal - Jeremy's CRM{% endblock %}
+{% block content %}
+<h1>New Proposal</h1>
+<form method="post" action="{{ url_for('add_proposal') }}" class="entity-form">
+    <div class="form-group">
+        <label for="name">Proposal Name *</label>
+        <input type="text" id="name" name="name" placeholder="Proposal name" required>
+    </div>
+    <div class="form-group">
+        <label for="follow_up_id">Linked Opportunity</label>
+        <input type="text" class="filter-input" placeholder="Search opportunities..." onkeyup="filterSelect(this, 'follow_up_id')">
+        <select id="follow_up_id" name="follow_up_id">
+            <option value="">-- None --</option>
+            {% for fu in follow_ups %}
+            <option value="{{ fu.id }}">{{ fu.title }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="value">Value ($)</label>
+        <input type="number" id="value" name="value" step="0.01" min="0" placeholder="0.00">
+    </div>
+    <div class="form-group">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+            <option value="Draft" selected>Draft</option>
+            <option value="Sent">Sent</option>
+            <option value="Negotiating">Negotiating</option>
+            <option value="Won">Won</option>
+            <option value="Lost">Lost</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="contact_person">Contact Person</label>
+        <input type="text" id="contact_person" name="contact_person" placeholder="Contact name">
+    </div>
+    <div class="form-group">
+        <label for="date_sent">Date Sent</label>
+        <input type="date" id="date_sent" name="date_sent">
+    </div>
+    <div class="form-group">
+        <label for="follow_up_date">Follow-up Date</label>
+        <input type="date" id="follow_up_date" name="follow_up_date">
+    </div>
+    <div class="form-group">
+        <label for="scope_of_work">Scope of Work</label>
+        <textarea id="scope_of_work" name="scope_of_work" placeholder="Describe the scope..."></textarea>
+    </div>
+    <div class="form-group">
+        <label for="timeline">Timeline</label>
+        <input type="text" id="timeline" name="timeline" placeholder="e.g., 4 weeks">
+    </div>
+    <div class="form-group">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" placeholder="General notes..."></textarea>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn">Create Proposal</button>
+        <a href="{{ url_for('proposals') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+<script>
+function filterSelect(input, selectId) {
+    var filter = input.value.toLowerCase();
+    var select = document.getElementById(selectId);
+    var options = select.querySelectorAll('option');
+    options.forEach(function(opt) {
+        if (!opt.value) return;
+        opt.style.display = opt.textContent.toLowerCase().includes(filter) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

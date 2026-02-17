@@ -64,6 +64,22 @@ CREATE TABLE IF NOT EXISTS follow_up_comments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS proposals (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    follow_up_id INTEGER REFERENCES follow_ups(id),
+    value REAL,
+    status TEXT DEFAULT 'Draft',
+    date_sent TEXT,
+    notes TEXT,
+    scope_of_work TEXT,
+    timeline TEXT,
+    contact_person TEXT,
+    follow_up_date TEXT,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Add sort_order columns if they don't exist (for existing databases)
 DO $$ BEGIN
     ALTER TABLE companies ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;

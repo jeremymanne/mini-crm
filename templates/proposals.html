@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Proposals Pipeline - Jeremy's CRM{% endblock %}
+{% block content %}
+<div class="pipeline-header">
+    <h1>Proposals Pipeline</h1>
+    <a href="{{ url_for('add_proposal') }}" class="btn">New Proposal</a>
+</div>
+
+<div class="pipeline-grid">
+    <div class="pipeline-column">
+        <h2 class="pipeline-col-header pipeline-draft">Draft <span class="pipeline-count">{{ draft|length }}</span></h2>
+        <div class="pipeline-cards" id="pipeline-draft" data-status="Draft">
+            {% for p in draft %}
+            <div class="proposal-card proposal-draft" data-id="{{ p.id }}">
+                <div class="drag-handle">&#x2630;</div>
+                <div class="proposal-card-content">
+                    <div class="proposal-card-header">
+                        <strong>{{ p.name }}</strong>
+                        <a href="{{ url_for('edit_proposal', id=p.id) }}" class="btn-small">Edit</a>
+                    </div>
+                    {% if p.value %}<div class="proposal-value">${{ "{:,.2f}".format(p.value) }}</div>{% endif %}
+                    {% if p.opportunity_name %}<div class="proposal-opp"><span class="tag tag-opp">{{ p.opportunity_name }}</span></div>{% endif %}
+                    {% if p.contact_person %}<div class="meta">Contact: {{ p.contact_person }}</div>{% endif %}
+                    {% if p.follow_up_date %}<div class="meta">Follow-up: {{ p.follow_up_date }}</div>{% endif %}
+                    <div class="proposal-status-actions">
+                        <form method="post" action="{{ url_for('update_proposal_status', id=p.id) }}" class="inline-form">
+                            <input type="hidden" name="status" value="Sent">
+                            <button type="submit" class="btn-small">Move to Sent &rarr;</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% if not draft %}<p class="empty">No drafts</p>{% endif %}
+        </div>
+    </div>
+
+    <div class="pipeline-column">
+        <h2 class="pipeline-col-header pipeline-sent">Sent <span class="pipeline-count">{{ sent|length }}</span></h2>
+        <div class="pipeline-cards" id="pipeline-sent" data-status="Sent">
+            {% for p in sent %}
+            <div class="proposal-card proposal-sent" data-id="{{ p.id }}">
+                <div class="drag-handle">&#x2630;</div>
+                <div class="proposal-card-content">
+                    <div class="proposal-card-header">
+                        <strong>{{ p.name }}</strong>
+                        <a href="{{ url_for('edit_proposal', id=p.id) }}" class="btn-small">Edit</a>
+                    </div>
+                    {% if p.value %}<div class="proposal-value">${{ "{:,.2f}".format(p.value) }}</div>{% endif %}
+                    {% if p.opportunity_name %}<div class="proposal-opp"><span class="tag tag-opp">{{ p.opportunity_name }}</span></div>{% endif %}
+                    {% if p.contact_person %}<div class="meta">Contact: {{ p.contact_person }}</div>{% endif %}
+                    {% if p.follow_up_date %}<div class="meta">Follow-up: {{ p.follow_up_date }}</div>{% endif %}
+                    <div class="proposal-status-actions">
+                        <form method="post" action="{{ url_for('update_proposal_status', id=p.id) }}" class="inline-form">
+                            <input type="hidden" name="status" value="Draft">
+                            <button type="submit" class="btn-small">&larr; Draft</button>
+                        </form>
+                        <form method="post" action="{{ url_for('update_proposal_status', id=p.id) }}" class="inline-form">
+                            <input type="hidden" name="status" value="Negotiating">
+                            <button type="submit" class="btn-small">Negotiating &rarr;</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% if not sent %}<p class="empty">No sent proposals</p>{% endif %}
+        </div>
+    </div>
+
+    <div class="pipeline-column">
+        <h2 class="pipeline-col-header pipeline-negotiating">Negotiating <span class="pipeline-count">{{ negotiating|length }}</span></h2>
+        <div class="pipeline-cards" id="pipeline-negotiating" data-status="Negotiating">
+            {% for p in negotiating %}
+            <div class="proposal-card proposal-negotiating" data-id="{{ p.id }}">
+                <div class="drag-handle">&#x2630;</div>
+                <div class="proposal-card-content">
+                    <div class="proposal-card-header">
+                        <strong>{{ p.name }}</strong>
+                        <a href="{{ url_for('edit_proposal', id=p.id) }}" class="btn-small">Edit</a>
+                    </div>
+                    {% if p.value %}<div class="proposal-value">${{ "{:,.2f}".format(p.value) }}</div>{% endif %}
+                    {% if p.opportunity_name %}<div class="proposal-opp"><span class="tag tag-opp">{{ p.opportunity_name }}</span></div>{% endif %}
+                    {% if p.contact_person %}<div class="meta">Contact: {{ p.contact_person }}</div>{% endif %}
+                    {% if p.follow_up_date %}<div class="meta">Follow-up: {{ p.follow_up_date }}</div>{% endif %}
+                    <div class="proposal-status-actions">
+                        <form method="post" action="{{ url_for('update_proposal_status', id=p.id) }}" class="inline-form">
+                            <input type="hidden" name="status" value="Sent">
+                            <button type="submit" class="btn-small">&larr; Sent</button>
+                        </form>
+                        <form method="post" action="{{ url_for('update_proposal_status', id=p.id) }}" class="inline-form">
+                            <input type="hidden" name="status" value="Won">
+                            <button type="submit" class="btn-small btn-won">Won</button>
+                        </form>
+                        <form method="post" action="{{ url_for('update_proposal_status', id=p.id) }}" class="inline-form">
+                            <input type="hidden" name="status" value="Lost">
+                            <button type="submit" class="btn-small btn-lost">Lost</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% if not negotiating %}<p class="empty">No proposals in negotiation</p>{% endif %}
+        </div>
+    </div>
+</div>
+
+{% if won or lost %}
+<div class="closed-deals">
+    <h2>Closed Deals</h2>
+    {% if won %}
+    <div class="closed-section">
+        <h3 class="closed-header closed-won-header">Won <span class="pipeline-count">{{ won|length }}</span></h3>
+        <div class="closed-cards">
+            {% for p in won %}
+            <div class="proposal-card proposal-won">
+                <div class="proposal-card-content">
+                    <div class="proposal-card-header">
+                        <strong>{{ p.name }}</strong>
+                        <a href="{{ url_for('edit_proposal', id=p.id) }}" class="btn-small">Edit</a>
+                    </div>
+                    {% if p.value %}<div class="proposal-value">${{ "{:,.2f}".format(p.value) }}</div>{% endif %}
+                    {% if p.opportunity_name %}<div class="proposal-opp"><span class="tag tag-opp">{{ p.opportunity_name }}</span></div>{% endif %}
+                    {% if p.contact_person %}<div class="meta">Contact: {{ p.contact_person }}</div>{% endif %}
+                    <div class="proposal-status-actions">
+                        <form method="post" action="{{ url_for('update_proposal_status', id=p.id) }}" class="inline-form">
+                            <input type="hidden" name="status" value="Negotiating">
+                            <button type="submit" class="btn-small">Reopen</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% if lost %}
+    <div class="closed-section">
+        <h3 class="closed-header closed-lost-header">Lost <span class="pipeline-count">{{ lost|length }}</span></h3>
+        <div class="closed-cards">
+            {% for p in lost %}
+            <div class="proposal-card proposal-lost">
+                <div class="proposal-card-content">
+                    <div class="proposal-card-header">
+                        <strong>{{ p.name }}</strong>
+                        <a href="{{ url_for('edit_proposal', id=p.id) }}" class="btn-small">Edit</a>
+                    </div>
+                    {% if p.value %}<div class="proposal-value">${{ "{:,.2f}".format(p.value) }}</div>{% endif %}
+                    {% if p.opportunity_name %}<div class="proposal-opp"><span class="tag tag-opp">{{ p.opportunity_name }}</span></div>{% endif %}
+                    {% if p.contact_person %}<div class="meta">Contact: {{ p.contact_person }}</div>{% endif %}
+                    <div class="proposal-status-actions">
+                        <form method="post" action="{{ url_for('update_proposal_status', id=p.id) }}" class="inline-form">
+                            <input type="hidden" name="status" value="Negotiating">
+                            <button type="submit" class="btn-small">Reopen</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+document.querySelectorAll('.pipeline-cards').forEach(function(el) {
+    new Sortable(el, {
+        group: 'pipeline',
+        animation: 150,
+        handle: '.drag-handle',
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onEnd: function(evt) {
+            var target = evt.to;
+            var newStatus = target.dataset.status;
+            var itemId = evt.item.dataset.id;
+
+            // If moved to a different column, update status
+            if (evt.from !== evt.to) {
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/proposal/' + itemId + '/update-status';
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'status';
+                input.value = newStatus;
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+                return;
+            }
+
+            // Reorder within column
+            var ids = Array.from(target.querySelectorAll('.proposal-card')).map(function(card) {
+                return card.dataset.id;
+            });
+            fetch('/proposals/reorder', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ids: ids})
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -65,3 +65,20 @@ CREATE TABLE IF NOT EXISTS follow_up_comments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (follow_up_id) REFERENCES follow_ups(id)
 );
+
+CREATE TABLE IF NOT EXISTS proposals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    follow_up_id INTEGER,
+    value REAL,
+    status TEXT DEFAULT 'Draft',
+    date_sent TEXT,
+    notes TEXT,
+    scope_of_work TEXT,
+    timeline TEXT,
+    contact_person TEXT,
+    follow_up_date TEXT,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (follow_up_id) REFERENCES follow_ups(id)
+);

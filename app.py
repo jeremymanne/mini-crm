@@ -700,6 +700,137 @@ def get_follow_ups_for_entity(entity_type, entity_id):
     return result
 
 
+# --- Proposals ---
+
+@app.route('/proposals')
+@login_required
+def proposals():
+    draft = query_db("SELECT * FROM proposals WHERE status = 'Draft' ORDER BY sort_order, created_at DESC")
+    sent = query_db("SELECT * FROM proposals WHERE status = 'Sent' ORDER BY sort_order, created_at DESC")
+    negotiating = query_db("SELECT * FROM proposals WHERE status = 'Negotiating' ORDER BY sort_order, created_at DESC")
+    won = query_db("SELECT * FROM proposals WHERE status = 'Won' ORDER BY created_at DESC")
+    lost = query_db("SELECT * FROM proposals WHERE status = 'Lost' ORDER BY created_at DESC")
+
+    # Load linked opportunity names for each proposal
+    def enrich(proposal_list):
+        result = []
+        for p in proposal_list:
+            pd = dict(p)
+            if p['follow_up_id']:
+                fu = query_db('SELECT title FROM follow_ups WHERE id = ?', (p['follow_up_id'],), one=True)
+                pd['opportunity_name'] = fu['title'] if fu else None
+            else:
+                pd['opportunity_name'] = None
+            result.append(pd)
+        return result
+
+    return render_template('proposals.html',
+                           draft=enrich(draft), sent=enrich(sent), negotiating=enrich(negotiating),
+                           won=enrich(won), lost=enrich(lost))
+
+
+@app.route('/proposal/add', methods=['GET', 'POST'])
+@login_required
+def add_proposal():
+    if request.method == 'POST':
+        name = request.form['name'].strip()
+        if not name:
+            flash('Proposal name is required.', 'error')
+            follow_ups_list = query_db('SELECT id, title FROM follow_ups ORDER BY title')
+            return render_template('add_proposal.html', follow_ups=follow_ups_list)
+        follow_up_id = request.form.get('follow_up_id') or None
+        if follow_up_id:
+            follow_up_id = int(follow_up_id)
+        value = request.form.get('value', '').strip()
+        value = float(value) if value else None
+        status = request.form.get('status', 'Draft')
+        date_sent = request.form.get('date_sent', '').strip() or None
+        notes = request.form.get('notes', '').strip() or None
+        scope_of_work = request.form.get('scope_of_work', '').strip() or None
+        timeline = request.form.get('timeline', '').strip() or None
+        contact_person = request.form.get('contact_person', '').strip() or None
+        follow_up_date = request.form.get('follow_up_date', '').strip() or None
+        query_db(
+            'INSERT INTO proposals (name, follow_up_id, value, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
+            (name, follow_up_id, value, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date),
+            insert=True
+        )
+        commit_db()
+        flash('Proposal created.', 'success')
+        return redirect(url_for('proposals'))
+    follow_ups_list = query_db('SELECT id, title FROM follow_ups ORDER BY title')
+    return render_template('add_proposal.html', follow_ups=follow_ups_list)
+
+
+@app.route('/proposal/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_proposal(id):
+    proposal = query_db('SELECT * FROM proposals WHERE id = ?', (id,), one=True)
+    if not proposal:
+        flash('Proposal not found.', 'error')
+        return redirect(url_for('proposals'))
+    if request.method == 'POST':
+        name = request.form['name'].strip()
+        if not name:
+            flash('Proposal name is required.', 'error')
+            follow_ups_list = query_db('SELECT id, title FROM follow_ups ORDER BY title')
+            return render_template('edit_proposal.html', proposal=proposal, follow_ups=follow_ups_list)
+        follow_up_id = request.form.get('follow_up_id') or None
+        if follow_up_id:
+            follow_up_id = int(follow_up_id)
+        value = request.form.get('value', '').strip()
+        value = float(value) if value else None
+        status = request.form.get('status', 'Draft')
+        date_sent = request.form.get('date_sent', '').strip() or None
+        notes = request.form.get('notes', '').strip() or None
+        scope_of_work = request.form.get('scope_of_work', '').strip() or None
+        timeline = request.form.get('timeline', '').strip() or None
+        contact_person = request.form.get('contact_person', '').strip() or None
+        follow_up_date = request.form.get('follow_up_date', '').strip() or None
+        query_db(
+            'UPDATE proposals SET name=?, follow_up_id=?, value=?, status=?, date_sent=?, notes=?, scope_of_work=?, timeline=?, contact_person=?, follow_up_date=? WHERE id=?',
+            (name, follow_up_id, value, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date, id)
+        )
+        commit_db()
+        flash('Proposal updated.', 'success')
+        return redirect(url_for('proposals'))
+    follow_ups_list = query_db('SELECT id, title FROM follow_ups ORDER BY title')
+    return render_template('edit_proposal.html', proposal=proposal, follow_ups=follow_ups_list)
+
+
+@app.route('/proposal/<int:id>/delete', methods=['POST'])
+@login_required
+def delete_proposal(id):
+    query_db('DELETE FROM proposals WHERE id = ?', (id,))
+    commit_db()
+    flash('Proposal deleted.', 'success')
+    return redirect(url_for('proposals'))
+
+
+@app.route('/proposal/<int:id>/update-status', methods=['POST'])
+@login_required
+def update_proposal_status(id):
+    new_status = request.form.get('status')
+    if new_status not in ('Draft', 'Sent', 'Negotiating', 'Won', 'Lost'):
+        flash('Invalid status.', 'error')
+        return redirect(url_for('proposals'))
+    query_db('UPDATE proposals SET status = ? WHERE id = ?', (new_status, id))
+    commit_db()
+    return redirect(url_for('proposals'))
+
+
+@app.route('/proposals/reorder', methods=['POST'])
+@login_required
+def reorder_proposals():
+    data = request.get_json()
+    ids = data.get('ids', [])
+    for i, item_id in enumerate(ids):
+        query_db('UPDATE proposals SET sort_order = ? WHERE id = ?', (i, int(item_id)))
+    commit_db()
+    return jsonify({'ok': True})
+
+
 # --- Reorder ---
 
 @app.route('/reorder', methods=['POST'])
@@ -708,7 +839,7 @@ def reorder():
     data = request.get_json()
     list_type = data.get('type')
     ids = data.get('ids', [])
-    if list_type not in ('companies', 'individuals', 'follow_ups', 'priority_follow_ups', 'watch_follow_ups'):
+    if list_type not in ('companies', 'individuals', 'follow_ups', 'priority_follow_ups', 'watch_follow_ups', 'proposals'):
         return jsonify({'error': 'Invalid type'}), 400
     if list_type in ('priority_follow_ups', 'watch_follow_ups'):
         for i, item_id in enumerate(ids):
@@ -749,7 +880,7 @@ def serialize_row(row):
 @login_required
 def export_data():
     tables = ['companies', 'individuals', 'relationships', 'notes',
-              'follow_ups', 'follow_up_links', 'follow_up_comments']
+              'follow_ups', 'follow_up_links', 'follow_up_comments', 'proposals']
     data = {}
     for table in tables:
         rows = query_db(f'SELECT * FROM {table}')
@@ -777,7 +908,7 @@ def import_data():
             return redirect(url_for('import_data'))
 
         # Clear existing data in reverse dependency order
-        for table in ['follow_up_comments', 'follow_up_links', 'follow_ups',
+        for table in ['proposals', 'follow_up_comments', 'follow_up_links', 'follow_ups',
                       'notes', 'relationships', 'individuals', 'companies']:
             query_db(f'DELETE FROM {table}')
 
@@ -803,11 +934,16 @@ def import_data():
         for fc in data.get('follow_up_comments', []):
             query_db('INSERT INTO follow_up_comments (id, follow_up_id, comment_text, created_at) VALUES (?, ?, ?, ?)',
                      (fc['id'], fc['follow_up_id'], fc['comment_text'], fc.get('created_at')))
+        for pr in data.get('proposals', []):
+            query_db('INSERT INTO proposals (id, name, follow_up_id, value, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                     (pr['id'], pr['name'], pr.get('follow_up_id'), pr.get('value'), pr.get('status', 'Draft'),
+                      pr.get('date_sent'), pr.get('notes'), pr.get('scope_of_work'), pr.get('timeline'),
+                      pr.get('contact_person'), pr.get('follow_up_date'), pr.get('sort_order', 0), pr.get('created_at')))
 
         # Reset sequences for PostgreSQL
         if USE_POSTGRES:
             for table in ['companies', 'individuals', 'relationships', 'notes',
-                          'follow_ups', 'follow_up_links', 'follow_up_comments']:
+                          'follow_ups', 'follow_up_links', 'follow_up_comments', 'proposals']:
                 query_db(f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), COALESCE((SELECT MAX(id) FROM {table}), 0) + 1, false)")
 
         commit_db()

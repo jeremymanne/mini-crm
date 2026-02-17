@@ -15,6 +15,7 @@
                 <a href="{{ url_for('add_company') }}">Add Company</a>
                 <a href="{{ url_for('add_individual') }}">Add Individual</a>
                 <a href="{{ url_for('add_follow_up_page') }}">New Opportunity</a>
+                <a href="{{ url_for('proposals') }}">Proposals</a>
                 {% if session.get('logged_in') %}
                 <a href="{{ url_for('export_data') }}">Export</a>
                 <a href="{{ url_for('import_data') }}">Import</a>
