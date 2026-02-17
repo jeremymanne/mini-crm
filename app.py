@@ -737,7 +737,8 @@ def add_proposal():
         if not name:
             flash('Proposal name is required.', 'error')
             follow_ups_list = query_db('SELECT id, title FROM follow_ups ORDER BY title')
-            return render_template('add_proposal.html', follow_ups=follow_ups_list)
+            individuals_list = query_db('SELECT id, name FROM individuals ORDER BY name')
+            return render_template('add_proposal.html', follow_ups=follow_ups_list, individuals=individuals_list)
         follow_up_id = request.form.get('follow_up_id') or None
         if follow_up_id:
             follow_up_id = int(follow_up_id)
@@ -760,7 +761,8 @@ def add_proposal():
         flash('Proposal created.', 'success')
         return redirect(url_for('proposals'))
     follow_ups_list = query_db('SELECT id, title FROM follow_ups ORDER BY title')
-    return render_template('add_proposal.html', follow_ups=follow_ups_list)
+    individuals_list = query_db('SELECT id, name FROM individuals ORDER BY name')
+    return render_template('add_proposal.html', follow_ups=follow_ups_list, individuals=individuals_list)
 
 
 @app.route('/proposal/<int:id>/edit', methods=['GET', 'POST'])
@@ -775,7 +777,8 @@ def edit_proposal(id):
         if not name:
             flash('Proposal name is required.', 'error')
             follow_ups_list = query_db('SELECT id, title FROM follow_ups ORDER BY title')
-            return render_template('edit_proposal.html', proposal=proposal, follow_ups=follow_ups_list)
+            individuals_list = query_db('SELECT id, name FROM individuals ORDER BY name')
+            return render_template('edit_proposal.html', proposal=proposal, follow_ups=follow_ups_list, individuals=individuals_list)
         follow_up_id = request.form.get('follow_up_id') or None
         if follow_up_id:
             follow_up_id = int(follow_up_id)
@@ -796,7 +799,8 @@ def edit_proposal(id):
         flash('Proposal updated.', 'success')
         return redirect(url_for('proposals'))
     follow_ups_list = query_db('SELECT id, title FROM follow_ups ORDER BY title')
-    return render_template('edit_proposal.html', proposal=proposal, follow_ups=follow_ups_list)
+    individuals_list = query_db('SELECT id, name FROM individuals ORDER BY name')
+    return render_template('edit_proposal.html', proposal=proposal, follow_ups=follow_ups_list, individuals=individuals_list)
 
 
 @app.route('/proposal/<int:id>/delete', methods=['POST'])

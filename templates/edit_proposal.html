@@ -31,7 +31,13 @@
     </div>
     <div class="form-group">
         <label for="contact_person">Contact Person</label>
-        <input type="text" id="contact_person" name="contact_person" value="{{ proposal.contact_person or '' }}">
+        <input type="text" class="filter-input" placeholder="Search contacts..." onkeyup="filterSelect(this, 'contact_person')">
+        <select id="contact_person" name="contact_person">
+            <option value="">-- None --</option>
+            {% for ind in individuals %}
+            <option value="{{ ind.name }}" {% if proposal.contact_person == ind.name %}selected{% endif %}>{{ ind.name }}</option>
+            {% endfor %}
+        </select>
     </div>
     <div class="form-group">
         <label for="date_sent">Date Sent</label>
