@@ -1150,6 +1150,69 @@ main {
     display: block;
 }
 
+/* Fee Range */
+.fee-range-row {
+    display: flex;
+    gap: 1rem;
+}
+
+.fee-range-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.fee-range-field input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+
+.fee-label {
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 0.2rem;
+}
+
+/* Closed Opportunities */
+.closed-opportunities {
+    margin-top: 2rem;
+}
+
+.closed-opportunities > h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+    color: #555;
+}
+
+.follow-up-closed {
+    border-left: 4px solid #9e9e9e;
+    background: #f9f9f9;
+}
+
+/* Close/Convert buttons */
+.btn-close-opp {
+    border-color: #2e7d32 !important;
+    color: #2e7d32 !important;
+}
+
+.btn-close-opp:hover {
+    background: #2e7d32 !important;
+    color: #fff !important;
+}
+
+.btn-convert {
+    border-color: #7b1fa2 !important;
+    color: #7b1fa2 !important;
+}
+
+.btn-convert:hover {
+    background: #7b1fa2 !important;
+    color: #fff !important;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
     .pipeline-grid {

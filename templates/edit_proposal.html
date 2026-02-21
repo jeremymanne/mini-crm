@@ -18,12 +18,30 @@
         </select>
     </div>
     <div class="form-group">
-        <label for="onboarding_fee">Onboarding Fee ($)</label>
-        <input type="number" id="onboarding_fee" name="onboarding_fee" step="0.01" min="0" value="{{ proposal.onboarding_fee if proposal.onboarding_fee is not none else '' }}">
+        <label>Onboarding Fee ($)</label>
+        <div class="fee-range-row">
+            <div class="fee-range-field">
+                <span class="fee-label">Min</span>
+                <input type="number" id="onboarding_fee" name="onboarding_fee" step="0.01" min="0" value="{{ proposal.onboarding_fee if proposal.onboarding_fee is not none else '' }}">
+            </div>
+            <div class="fee-range-field">
+                <span class="fee-label">Max</span>
+                <input type="number" id="onboarding_fee_max" name="onboarding_fee_max" step="0.01" min="0" value="{{ proposal.onboarding_fee_max if proposal.onboarding_fee_max is not none else '' }}">
+            </div>
+        </div>
     </div>
     <div class="form-group">
-        <label for="monthly_retainer">Monthly Retainer ($)</label>
-        <input type="number" id="monthly_retainer" name="monthly_retainer" step="0.01" min="0" value="{{ proposal.monthly_retainer if proposal.monthly_retainer is not none else '' }}">
+        <label>Monthly Retainer ($)</label>
+        <div class="fee-range-row">
+            <div class="fee-range-field">
+                <span class="fee-label">Min</span>
+                <input type="number" id="monthly_retainer" name="monthly_retainer" step="0.01" min="0" value="{{ proposal.monthly_retainer if proposal.monthly_retainer is not none else '' }}">
+            </div>
+            <div class="fee-range-field">
+                <span class="fee-label">Max</span>
+                <input type="number" id="monthly_retainer_max" name="monthly_retainer_max" step="0.01" min="0" value="{{ proposal.monthly_retainer_max if proposal.monthly_retainer_max is not none else '' }}">
+            </div>
+        </div>
     </div>
     <div class="form-group">
         <label for="status">Status</label>
@@ -34,14 +52,15 @@
         </select>
     </div>
     <div class="form-group">
-        <label for="contact_person">Contact Person</label>
-        <input type="text" class="filter-input" placeholder="Search contacts..." onkeyup="filterSelect(this, 'contact_person')">
-        <select id="contact_person" name="contact_person">
-            <option value="">-- None --</option>
+        <label>Contact Individuals</label>
+        <input type="text" class="filter-input" placeholder="Search contacts..." onkeyup="filterList(this, 'contact-individuals-list')">
+        <div class="checkbox-list" id="contact-individuals-list">
             {% for ind in individuals %}
-            <option value="{{ ind.name }}" {% if proposal.contact_person == ind.name %}selected{% endif %}>{{ ind.name }}</option>
+            <label class="checkbox-item">
+                <input type="checkbox" name="contact_individuals" value="{{ ind.id }}" {% if ind.id in linked_contact_ids %}checked{% endif %}> {{ ind.name }}
+            </label>
             {% endfor %}
-        </select>
+        </div>
     </div>
     <div class="form-group">
         <label for="date_sent">Date Sent</label>
@@ -79,6 +98,14 @@ function filterSelect(input, selectId) {
     options.forEach(function(opt) {
         if (!opt.value) return;
         opt.style.display = opt.textContent.toLowerCase().includes(filter) ? '' : 'none';
+    });
+}
+function filterList(input, listId) {
+    const filter = input.value.toLowerCase();
+    const items = document.getElementById(listId).querySelectorAll('.checkbox-item');
+    items.forEach(function(item) {
+        const text = item.textContent.toLowerCase();
+        item.style.display = text.includes(filter) ? '' : 'none';
     });
 }
 </script>

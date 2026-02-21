@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS follow_ups (
     title TEXT NOT NULL,
     body TEXT,
     opp_type TEXT DEFAULT 'TBD',
+    closed_at TIMESTAMP,
     sort_order INTEGER DEFAULT 0,
     priority_level INTEGER DEFAULT 0,
     priority_order INTEGER DEFAULT 0,
@@ -71,7 +72,9 @@ CREATE TABLE IF NOT EXISTS proposals (
     name TEXT NOT NULL,
     follow_up_id INTEGER,
     onboarding_fee REAL,
+    onboarding_fee_max REAL,
     monthly_retainer REAL,
+    monthly_retainer_max REAL,
     status TEXT DEFAULT 'Draft',
     date_sent TEXT,
     notes TEXT,
@@ -82,4 +85,12 @@ CREATE TABLE IF NOT EXISTS proposals (
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (follow_up_id) REFERENCES follow_ups(id)
+);
+
+CREATE TABLE IF NOT EXISTS proposal_contacts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    proposal_id INTEGER NOT NULL,
+    individual_id INTEGER NOT NULL,
+    FOREIGN KEY (proposal_id) REFERENCES proposals(id),
+    FOREIGN KEY (individual_id) REFERENCES individuals(id)
 );

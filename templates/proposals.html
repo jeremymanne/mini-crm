@@ -9,9 +9,9 @@
 {% macro proposal_value(p) %}
 {% if p.onboarding_fee or p.monthly_retainer %}
 <div class="proposal-value">
-    {% if p.onboarding_fee %}Onboarding: ${{ "{:,.2f}".format(p.onboarding_fee) }}{% endif %}
+    {% if p.onboarding_fee %}Onboarding: ${{ "{:,.2f}".format(p.onboarding_fee) }}{% if p.onboarding_fee_max and p.onboarding_fee_max != p.onboarding_fee %} &ndash; ${{ "{:,.2f}".format(p.onboarding_fee_max) }}{% endif %}{% endif %}
     {% if p.onboarding_fee and p.monthly_retainer %}<br>{% endif %}
-    {% if p.monthly_retainer %}Retainer: ${{ "{:,.2f}".format(p.monthly_retainer) }}/mo{% endif %}
+    {% if p.monthly_retainer %}Retainer: ${{ "{:,.2f}".format(p.monthly_retainer) }}{% if p.monthly_retainer_max and p.monthly_retainer_max != p.monthly_retainer %} &ndash; ${{ "{:,.2f}".format(p.monthly_retainer_max) }}{% endif %}/mo{% endif %}
 </div>
 {% endif %}
 {% endmacro %}
@@ -21,6 +21,14 @@
 <div class="proposal-opp">
     <a href="{{ url_for('index') }}#follow-up-{{ p.follow_up_id }}" class="tag tag-link-proposal">{{ p.opportunity_name }}</a>
 </div>
+{% endif %}
+{% endmacro %}
+
+{% macro proposal_contacts(p) %}
+{% if p.contacts %}
+<div class="meta">Contact: {% for c in p.contacts %}<a href="{{ url_for('individual_detail', id=c.id) }}" class="tag tag-link-individual">{{ c.name }}</a>{% endfor %}</div>
+{% elif p.contact_person %}
+<div class="meta">Contact: {{ p.contact_person }}</div>
 {% endif %}
 {% endmacro %}
 
@@ -38,7 +46,7 @@
                     </div>
                     {{ proposal_value(p) }}
                     {{ proposal_opp_link(p) }}
-                    {% if p.contact_person %}<div class="meta">Contact: {{ p.contact_person }}</div>{% endif %}
+                    {{ proposal_contacts(p) }}
                     {% if p.follow_up_date %}<div class="meta">Follow-up: {{ p.follow_up_date }}</div>{% endif %}
                     <div class="proposal-status-actions">
                         <form method="post" action="{{ url_for('update_proposal_status', id=p.id) }}" class="inline-form">
@@ -66,7 +74,7 @@
                     </div>
                     {{ proposal_value(p) }}
                     {{ proposal_opp_link(p) }}
-                    {% if p.contact_person %}<div class="meta">Contact: {{ p.contact_person }}</div>{% endif %}
+                    {{ proposal_contacts(p) }}
                     {% if p.follow_up_date %}<div class="meta">Follow-up: {{ p.follow_up_date }}</div>{% endif %}
                     <div class="proposal-status-actions">
                         <form method="post" action="{{ url_for('update_proposal_status', id=p.id) }}" class="inline-form">
@@ -98,7 +106,7 @@
                     </div>
                     {{ proposal_value(p) }}
                     {{ proposal_opp_link(p) }}
-                    {% if p.contact_person %}<div class="meta">Contact: {{ p.contact_person }}</div>{% endif %}
+                    {{ proposal_contacts(p) }}
                     {% if p.follow_up_date %}<div class="meta">Follow-up: {{ p.follow_up_date }}</div>{% endif %}
                     <div class="proposal-status-actions">
                         <form method="post" action="{{ url_for('update_proposal_status', id=p.id) }}" class="inline-form">
@@ -138,7 +146,7 @@
                     </div>
                     {{ proposal_value(p) }}
                     {{ proposal_opp_link(p) }}
-                    {% if p.contact_person %}<div class="meta">Contact: {{ p.contact_person }}</div>{% endif %}
+                    {{ proposal_contacts(p) }}
                     <div class="proposal-status-actions">
                         <form method="post" action="{{ url_for('update_proposal_status', id=p.id) }}" class="inline-form">
                             <input type="hidden" name="status" value="Negotiating">
@@ -164,7 +172,7 @@
                     </div>
                     {{ proposal_value(p) }}
                     {{ proposal_opp_link(p) }}
-                    {% if p.contact_person %}<div class="meta">Contact: {{ p.contact_person }}</div>{% endif %}
+                    {{ proposal_contacts(p) }}
                     <div class="proposal-status-actions">
                         <form method="post" action="{{ url_for('update_proposal_status', id=p.id) }}" class="inline-form">
                             <input type="hidden" name="status" value="Negotiating">

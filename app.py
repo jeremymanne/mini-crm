@@ -88,6 +88,25 @@ def init_db():
     else:
         with app.open_resource('schema.sql') as f:
             db.executescript(f.read().decode('utf-8'))
+        # Migrations for existing SQLite databases
+        for stmt in [
+            'ALTER TABLE companies ADD COLUMN sort_order INTEGER DEFAULT 0',
+            'ALTER TABLE individuals ADD COLUMN sort_order INTEGER DEFAULT 0',
+            'ALTER TABLE follow_ups ADD COLUMN sort_order INTEGER DEFAULT 0',
+            'ALTER TABLE follow_ups ADD COLUMN opp_type TEXT DEFAULT \'TBD\'',
+            'ALTER TABLE follow_ups ADD COLUMN priority_level INTEGER DEFAULT 0',
+            'ALTER TABLE follow_ups ADD COLUMN priority_order INTEGER DEFAULT 0',
+            'ALTER TABLE follow_ups ADD COLUMN closed_at TIMESTAMP',
+            'ALTER TABLE proposals ADD COLUMN onboarding_fee REAL',
+            'ALTER TABLE proposals ADD COLUMN monthly_retainer REAL',
+            'ALTER TABLE proposals ADD COLUMN onboarding_fee_max REAL',
+            'ALTER TABLE proposals ADD COLUMN monthly_retainer_max REAL',
+        ]:
+            try:
+                db.execute(stmt)
+                db.commit()
+            except Exception:
+                pass
 
 
 with app.app_context():
@@ -166,22 +185,29 @@ def index():
 
     if q:
         follow_ups = query_db(
-            'SELECT * FROM follow_ups WHERE title LIKE ? OR body LIKE ? ORDER BY sort_order, created_at DESC',
+            'SELECT * FROM follow_ups WHERE closed_at IS NULL AND (title LIKE ? OR body LIKE ?) ORDER BY sort_order, created_at DESC',
             (f'%{q}%', f'%{q}%')
         )
         follow_up_data = load_follow_up_data(follow_ups)
         priority_data = [item for item in follow_up_data if item['follow_up']['priority_level'] == 2]
         watch_data = [item for item in follow_up_data if item['follow_up']['priority_level'] == 1]
+        closed_follow_ups = query_db(
+            'SELECT * FROM follow_ups WHERE closed_at IS NOT NULL AND (title LIKE ? OR body LIKE ?) ORDER BY closed_at DESC',
+            (f'%{q}%', f'%{q}%')
+        )
     else:
-        all_follow_ups = query_db('SELECT * FROM follow_ups ORDER BY sort_order, created_at DESC')
-        priority_follow_ups = query_db('SELECT * FROM follow_ups WHERE priority_level = 2 ORDER BY priority_order, created_at DESC')
-        watch_follow_ups = query_db('SELECT * FROM follow_ups WHERE priority_level = 1 ORDER BY priority_order, created_at DESC')
+        all_follow_ups = query_db('SELECT * FROM follow_ups WHERE closed_at IS NULL ORDER BY sort_order, created_at DESC')
+        priority_follow_ups = query_db('SELECT * FROM follow_ups WHERE closed_at IS NULL AND priority_level = 2 ORDER BY priority_order, created_at DESC')
+        watch_follow_ups = query_db('SELECT * FROM follow_ups WHERE closed_at IS NULL AND priority_level = 1 ORDER BY priority_order, created_at DESC')
         follow_up_data = load_follow_up_data(all_follow_ups)
         priority_data = load_follow_up_data(priority_follow_ups)
         watch_data = load_follow_up_data(watch_follow_ups)
+        closed_follow_ups = query_db('SELECT * FROM follow_ups WHERE closed_at IS NOT NULL ORDER BY closed_at DESC')
+    closed_data = load_follow_up_data(closed_follow_ups)
 
     return render_template('index.html', query=q,
-                           follow_up_data=follow_up_data, priority_data=priority_data, watch_data=watch_data)
+                           follow_up_data=follow_up_data, priority_data=priority_data, watch_data=watch_data,
+                           closed_data=closed_data)
 
 
 # --- Company List ---
@@ -714,7 +740,7 @@ def proposals():
     won = query_db("SELECT * FROM proposals WHERE status = 'Won' ORDER BY created_at DESC")
     lost = query_db("SELECT * FROM proposals WHERE status = 'Lost' ORDER BY created_at DESC")
 
-    # Load linked opportunity names for each proposal
+    # Load linked opportunity names and contacts for each proposal
     def enrich(proposal_list):
         result = []
         for p in proposal_list:
@@ -724,6 +750,12 @@ def proposals():
                 pd['opportunity_name'] = fu['title'] if fu else None
             else:
                 pd['opportunity_name'] = None
+            # Load linked contacts
+            contacts = query_db(
+                'SELECT i.id, i.name FROM proposal_contacts pc JOIN individuals i ON pc.individual_id = i.id WHERE pc.proposal_id = ?',
+                (p['id'],)
+            )
+            pd['contacts'] = [{'id': c['id'], 'name': c['name']} for c in contacts]
             result.append(pd)
         return result
 
@@ -747,8 +779,12 @@ def add_proposal():
             follow_up_id = int(follow_up_id)
         onboarding_fee = request.form.get('onboarding_fee', '').strip()
         onboarding_fee = float(onboarding_fee) if onboarding_fee else None
+        onboarding_fee_max = request.form.get('onboarding_fee_max', '').strip()
+        onboarding_fee_max = float(onboarding_fee_max) if onboarding_fee_max else None
         monthly_retainer = request.form.get('monthly_retainer', '').strip()
         monthly_retainer = float(monthly_retainer) if monthly_retainer else None
+        monthly_retainer_max = request.form.get('monthly_retainer_max', '').strip()
+        monthly_retainer_max = float(monthly_retainer_max) if monthly_retainer_max else None
         status = request.form.get('status', 'Draft')
         date_sent = request.form.get('date_sent', '').strip() or None
         notes = request.form.get('notes', '').strip() or None
@@ -756,12 +792,22 @@ def add_proposal():
         timeline = request.form.get('timeline', '').strip() or None
         contact_person = request.form.get('contact_person', '').strip() or None
         follow_up_date = request.form.get('follow_up_date', '').strip() or None
-        query_db(
-            'INSERT INTO proposals (name, follow_up_id, onboarding_fee, monthly_retainer, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
-            (name, follow_up_id, onboarding_fee, monthly_retainer, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date),
+        # Multi-contact: set contact_person from first selected individual
+        contact_individuals = request.form.getlist('contact_individuals')
+        if contact_individuals and not contact_person:
+            ind = query_db('SELECT name FROM individuals WHERE id = ?', (int(contact_individuals[0]),), one=True)
+            if ind:
+                contact_person = ind['name']
+        proposal_id = query_db(
+            'INSERT INTO proposals (name, follow_up_id, onboarding_fee, onboarding_fee_max, monthly_retainer, monthly_retainer_max, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
+            (name, follow_up_id, onboarding_fee, onboarding_fee_max, monthly_retainer, monthly_retainer_max, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date),
             insert=True
         )
+        # Insert proposal_contacts
+        for iid in contact_individuals:
+            query_db('INSERT INTO proposal_contacts (proposal_id, individual_id) VALUES (?, ?)',
+                     (proposal_id, int(iid)))
         commit_db()
         flash('Proposal created.', 'success')
         return redirect(url_for('proposals'))
@@ -783,14 +829,19 @@ def edit_proposal(id):
             flash('Proposal name is required.', 'error')
             follow_ups_list = query_db('SELECT id, title FROM follow_ups ORDER BY title')
             individuals_list = query_db('SELECT id, name FROM individuals ORDER BY name')
-            return render_template('edit_proposal.html', proposal=proposal, follow_ups=follow_ups_list, individuals=individuals_list)
+            linked_contact_ids = [row['individual_id'] for row in query_db('SELECT individual_id FROM proposal_contacts WHERE proposal_id = ?', (id,))]
+            return render_template('edit_proposal.html', proposal=proposal, follow_ups=follow_ups_list, individuals=individuals_list, linked_contact_ids=linked_contact_ids)
         follow_up_id = request.form.get('follow_up_id') or None
         if follow_up_id:
             follow_up_id = int(follow_up_id)
         onboarding_fee = request.form.get('onboarding_fee', '').strip()
         onboarding_fee = float(onboarding_fee) if onboarding_fee else None
+        onboarding_fee_max = request.form.get('onboarding_fee_max', '').strip()
+        onboarding_fee_max = float(onboarding_fee_max) if onboarding_fee_max else None
         monthly_retainer = request.form.get('monthly_retainer', '').strip()
         monthly_retainer = float(monthly_retainer) if monthly_retainer else None
+        monthly_retainer_max = request.form.get('monthly_retainer_max', '').strip()
+        monthly_retainer_max = float(monthly_retainer_max) if monthly_retainer_max else None
         status = request.form.get('status', 'Draft')
         date_sent = request.form.get('date_sent', '').strip() or None
         notes = request.form.get('notes', '').strip() or None
@@ -798,21 +849,34 @@ def edit_proposal(id):
         timeline = request.form.get('timeline', '').strip() or None
         contact_person = request.form.get('contact_person', '').strip() or None
         follow_up_date = request.form.get('follow_up_date', '').strip() or None
+        # Multi-contact: set contact_person from first selected individual
+        contact_individuals = request.form.getlist('contact_individuals')
+        if contact_individuals and not contact_person:
+            ind = query_db('SELECT name FROM individuals WHERE id = ?', (int(contact_individuals[0]),), one=True)
+            if ind:
+                contact_person = ind['name']
         query_db(
-            'UPDATE proposals SET name=?, follow_up_id=?, onboarding_fee=?, monthly_retainer=?, status=?, date_sent=?, notes=?, scope_of_work=?, timeline=?, contact_person=?, follow_up_date=? WHERE id=?',
-            (name, follow_up_id, onboarding_fee, monthly_retainer, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date, id)
+            'UPDATE proposals SET name=?, follow_up_id=?, onboarding_fee=?, onboarding_fee_max=?, monthly_retainer=?, monthly_retainer_max=?, status=?, date_sent=?, notes=?, scope_of_work=?, timeline=?, contact_person=?, follow_up_date=? WHERE id=?',
+            (name, follow_up_id, onboarding_fee, onboarding_fee_max, monthly_retainer, monthly_retainer_max, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date, id)
         )
+        # Replace proposal_contacts
+        query_db('DELETE FROM proposal_contacts WHERE proposal_id = ?', (id,))
+        for iid in contact_individuals:
+            query_db('INSERT INTO proposal_contacts (proposal_id, individual_id) VALUES (?, ?)',
+                     (id, int(iid)))
         commit_db()
         flash('Proposal updated.', 'success')
         return redirect(url_for('proposals'))
     follow_ups_list = query_db('SELECT id, title FROM follow_ups ORDER BY title')
     individuals_list = query_db('SELECT id, name FROM individuals ORDER BY name')
-    return render_template('edit_proposal.html', proposal=proposal, follow_ups=follow_ups_list, individuals=individuals_list)
+    linked_contact_ids = [row['individual_id'] for row in query_db('SELECT individual_id FROM proposal_contacts WHERE proposal_id = ?', (id,))]
+    return render_template('edit_proposal.html', proposal=proposal, follow_ups=follow_ups_list, individuals=individuals_list, linked_contact_ids=linked_contact_ids)
 
 
 @app.route('/proposal/<int:id>/delete', methods=['POST'])
 @login_required
 def delete_proposal(id):
+    query_db('DELETE FROM proposal_contacts WHERE proposal_id = ?', (id,))
     query_db('DELETE FROM proposals WHERE id = ?', (id,))
     commit_db()
     flash('Proposal deleted.', 'success')
@@ -876,6 +940,52 @@ def set_priority(id, level):
     return redirect(url_for('index') + f'#follow-up-{id}')
 
 
+@app.route('/follow-up/<int:id>/toggle-close', methods=['POST'])
+@login_required
+def toggle_close_follow_up(id):
+    fu = query_db('SELECT closed_at FROM follow_ups WHERE id = ?', (id,), one=True)
+    if fu:
+        if fu['closed_at'] is None:
+            query_db('UPDATE follow_ups SET closed_at = CURRENT_TIMESTAMP WHERE id = ?', (id,))
+        else:
+            query_db('UPDATE follow_ups SET closed_at = NULL WHERE id = ?', (id,))
+        commit_db()
+    return redirect(url_for('index'))
+
+
+@app.route('/follow-up/<int:id>/convert-to-proposal', methods=['POST'])
+@login_required
+def convert_to_proposal(id):
+    fu = query_db('SELECT * FROM follow_ups WHERE id = ?', (id,), one=True)
+    if not fu:
+        flash('Opportunity not found.', 'error')
+        return redirect(url_for('index'))
+    # Create draft proposal from opportunity
+    proposal_id = query_db(
+        'INSERT INTO proposals (name, follow_up_id, status, notes) VALUES (?, ?, ?, ?) RETURNING id',
+        (fu['title'], id, 'Draft', fu['body']),
+        insert=True
+    )
+    # Copy linked individuals to proposal_contacts
+    links = query_db("SELECT entity_id FROM follow_up_links WHERE follow_up_id = ? AND entity_type = 'individual'", (id,))
+    first_contact_name = None
+    for link in links:
+        query_db('INSERT INTO proposal_contacts (proposal_id, individual_id) VALUES (?, ?)',
+                 (proposal_id, link['entity_id']))
+        if first_contact_name is None:
+            ind = query_db('SELECT name FROM individuals WHERE id = ?', (link['entity_id'],), one=True)
+            if ind:
+                first_contact_name = ind['name']
+    # Set contact_person for backward compat
+    if first_contact_name:
+        query_db('UPDATE proposals SET contact_person = ? WHERE id = ?', (first_contact_name, proposal_id))
+    # Auto-close the opportunity
+    query_db('UPDATE follow_ups SET closed_at = CURRENT_TIMESTAMP WHERE id = ?', (id,))
+    commit_db()
+    flash('Proposal created from opportunity.', 'success')
+    return redirect(url_for('edit_proposal', id=proposal_id))
+
+
 # --- Export / Import ---
 
 def serialize_row(row):
@@ -891,7 +1001,7 @@ def serialize_row(row):
 @login_required
 def export_data():
     tables = ['companies', 'individuals', 'relationships', 'notes',
-              'follow_ups', 'follow_up_links', 'follow_up_comments', 'proposals']
+              'follow_ups', 'follow_up_links', 'follow_up_comments', 'proposals', 'proposal_contacts']
     data = {}
     for table in tables:
         rows = query_db(f'SELECT * FROM {table}')
@@ -919,7 +1029,7 @@ def import_data():
             return redirect(url_for('import_data'))
 
         # Clear existing data in reverse dependency order
-        for table in ['proposals', 'follow_up_comments', 'follow_up_links', 'follow_ups',
+        for table in ['proposal_contacts', 'proposals', 'follow_up_comments', 'follow_up_links', 'follow_ups',
                       'notes', 'relationships', 'individuals', 'companies']:
             query_db(f'DELETE FROM {table}')
 
@@ -937,8 +1047,9 @@ def import_data():
             query_db('INSERT INTO notes (id, entity_type, entity_id, note_text, created_at) VALUES (?, ?, ?, ?, ?)',
                      (n['id'], n['entity_type'], n['entity_id'], n['note_text'], n.get('created_at')))
         for fu in data.get('follow_ups', []):
-            query_db('INSERT INTO follow_ups (id, title, body, opp_type, created_at) VALUES (?, ?, ?, ?, ?)',
-                     (fu['id'], fu['title'], fu.get('body'), fu.get('opp_type', 'TBD'), fu.get('created_at')))
+            query_db('INSERT INTO follow_ups (id, title, body, opp_type, closed_at, sort_order, priority_level, priority_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                     (fu['id'], fu['title'], fu.get('body'), fu.get('opp_type', 'TBD'), fu.get('closed_at'),
+                      fu.get('sort_order', 0), fu.get('priority_level', 0), fu.get('priority_order', 0), fu.get('created_at')))
         for fl in data.get('follow_up_links', []):
             query_db('INSERT INTO follow_up_links (id, follow_up_id, entity_type, entity_id) VALUES (?, ?, ?, ?)',
                      (fl['id'], fl['follow_up_id'], fl['entity_type'], fl['entity_id']))
@@ -946,15 +1057,20 @@ def import_data():
             query_db('INSERT INTO follow_up_comments (id, follow_up_id, comment_text, created_at) VALUES (?, ?, ?, ?)',
                      (fc['id'], fc['follow_up_id'], fc['comment_text'], fc.get('created_at')))
         for pr in data.get('proposals', []):
-            query_db('INSERT INTO proposals (id, name, follow_up_id, onboarding_fee, monthly_retainer, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                     (pr['id'], pr['name'], pr.get('follow_up_id'), pr.get('onboarding_fee'), pr.get('monthly_retainer'),
+            query_db('INSERT INTO proposals (id, name, follow_up_id, onboarding_fee, onboarding_fee_max, monthly_retainer, monthly_retainer_max, status, date_sent, notes, scope_of_work, timeline, contact_person, follow_up_date, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                     (pr['id'], pr['name'], pr.get('follow_up_id'), pr.get('onboarding_fee'), pr.get('onboarding_fee_max'),
+                      pr.get('monthly_retainer'), pr.get('monthly_retainer_max'),
                       pr.get('status', 'Draft'), pr.get('date_sent'), pr.get('notes'), pr.get('scope_of_work'),
                       pr.get('timeline'), pr.get('contact_person'), pr.get('follow_up_date'), pr.get('sort_order', 0), pr.get('created_at')))
+
+        for pc in data.get('proposal_contacts', []):
+            query_db('INSERT INTO proposal_contacts (id, proposal_id, individual_id) VALUES (?, ?, ?)',
+                     (pc['id'], pc['proposal_id'], pc['individual_id']))
 
         # Reset sequences for PostgreSQL
         if USE_POSTGRES:
             for table in ['companies', 'individuals', 'relationships', 'notes',
-                          'follow_ups', 'follow_up_links', 'follow_up_comments', 'proposals']:
+                          'follow_ups', 'follow_up_links', 'follow_up_comments', 'proposals', 'proposal_contacts']:
                 query_db(f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), COALESCE((SELECT MAX(id) FROM {table}), 0) + 1, false)")
 
         commit_db()

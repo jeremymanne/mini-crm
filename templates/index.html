@@ -32,6 +32,13 @@
                         <form method="post" action="{{ url_for('set_priority', id=item.follow_up.id, level=2) }}" class="inline-form">
                             <button type="submit" class="btn-flag flagged-red" title="Remove from Top Priority">&#9873;</button>
                         </form>
+                        <form method="post" action="{{ url_for('toggle_close_follow_up', id=item.follow_up.id) }}" class="inline-form">
+                            <button type="submit" class="btn-small btn-close-opp" title="Close Opportunity">&#10003;</button>
+                        </form>
+                        <form method="post" action="{{ url_for('convert_to_proposal', id=item.follow_up.id) }}" class="inline-form"
+                              onsubmit="return confirm('Create a proposal from this opportunity? The opportunity will be closed.')">
+                            <button type="submit" class="btn-small btn-convert" title="Convert to Proposal">&rarr; Proposal</button>
+                        </form>
                         <a href="{{ url_for('edit_follow_up', id=item.follow_up.id) }}" class="btn-small">Edit</a>
                     </div>
                 </div>
@@ -96,6 +103,13 @@
                     <div class="follow-up-actions">
                         <form method="post" action="{{ url_for('set_priority', id=item.follow_up.id, level=1) }}" class="inline-form">
                             <button type="submit" class="btn-flag flagged-yellow" title="Remove from Watch List">&#9873;</button>
+                        </form>
+                        <form method="post" action="{{ url_for('toggle_close_follow_up', id=item.follow_up.id) }}" class="inline-form">
+                            <button type="submit" class="btn-small btn-close-opp" title="Close Opportunity">&#10003;</button>
+                        </form>
+                        <form method="post" action="{{ url_for('convert_to_proposal', id=item.follow_up.id) }}" class="inline-form"
+                              onsubmit="return confirm('Create a proposal from this opportunity? The opportunity will be closed.')">
+                            <button type="submit" class="btn-small btn-convert" title="Convert to Proposal">&rarr; Proposal</button>
                         </form>
                         <a href="{{ url_for('edit_follow_up', id=item.follow_up.id) }}" class="btn-small">Edit</a>
                     </div>
@@ -164,6 +178,13 @@
                         </form>
                         <form method="post" action="{{ url_for('set_priority', id=item.follow_up.id, level=1) }}" class="inline-form">
                             <button type="submit" class="btn-flag{% if item.follow_up.priority_level == 1 %} flagged-yellow{% endif %}" title="Watch List">&#9873;</button>
+                        </form>
+                        <form method="post" action="{{ url_for('toggle_close_follow_up', id=item.follow_up.id) }}" class="inline-form">
+                            <button type="submit" class="btn-small btn-close-opp" title="Close Opportunity">&#10003;</button>
+                        </form>
+                        <form method="post" action="{{ url_for('convert_to_proposal', id=item.follow_up.id) }}" class="inline-form"
+                              onsubmit="return confirm('Create a proposal from this opportunity? The opportunity will be closed.')">
+                            <button type="submit" class="btn-small btn-convert" title="Convert to Proposal">&rarr; Proposal</button>
                         </form>
                         <a href="{{ url_for('edit_follow_up', id=item.follow_up.id) }}" class="btn-small">Edit</a>
                         <form method="post" action="{{ url_for('delete_follow_up', id=item.follow_up.id) }}" class="inline-form"
@@ -252,6 +273,67 @@
         </div>
     </div>
 </div>
+
+{% if closed_data %}
+<div class="closed-opportunities">
+    <h2 class="collapsible" onclick="toggleSection(this)"><span class="collapse-icon">&#9654;</span> Closed Opportunities <span class="pipeline-count">{{ closed_data|length }}</span></h2>
+    <div class="collapsible-content" style="display:none">
+        <div class="follow-up-list">
+            {% for item in closed_data %}
+            <div class="follow-up-card follow-up-closed" id="follow-up-{{ item.follow_up.id }}">
+                <div class="follow-up-header">
+                    <span class="opp-toggle" onclick="toggleOpp('closed-details-{{ item.follow_up.id }}', this)">&#9654;</span>
+                    <h3>{{ item.follow_up.title }}</h3>
+                    {% if item.follow_up.opp_type %}<span class="tag tag-opp">{{ item.follow_up.opp_type }}</span>{% endif %}
+                    <div class="follow-up-actions">
+                        <form method="post" action="{{ url_for('toggle_close_follow_up', id=item.follow_up.id) }}" class="inline-form">
+                            <button type="submit" class="btn-small" title="Reopen Opportunity">Reopen</button>
+                        </form>
+                        <a href="{{ url_for('edit_follow_up', id=item.follow_up.id) }}" class="btn-small">Edit</a>
+                        <form method="post" action="{{ url_for('delete_follow_up', id=item.follow_up.id) }}" class="inline-form"
+                              onsubmit="return confirm('Delete this opportunity?')">
+                            <button type="submit" class="btn-small btn-danger">Delete</button>
+                        </form>
+                    </div>
+                </div>
+                {% if item.links %}
+                <div class="follow-up-links">
+                    {% for link in item.links %}
+                    <a href="{{ url_for('company_detail' if link.type == 'company' else 'individual_detail', id=link.id) }}"
+                       class="tag tag-link-{{ link.type }}">{{ link.name }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if item.proposals %}
+                <div class="follow-up-links">
+                    {% for prop in item.proposals %}
+                    <a href="{{ url_for('edit_proposal', id=prop.id) }}" class="tag tag-link-proposal">{{ prop.name }} ({{ prop.status }})</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="opp-details" id="closed-details-{{ item.follow_up.id }}" style="display:none">
+                    <span class="meta">Closed: {{ item.follow_up.closed_at|datefmt }}</span>
+                    <span class="meta">Created: {{ item.follow_up.created_at|datefmt }}</span>
+                    {% if item.follow_up.body %}
+                    <p class="follow-up-body">{{ item.follow_up.body }}</p>
+                    {% endif %}
+                    {% if item.comments %}
+                    <div class="follow-up-comments">
+                        {% for comment in item.comments %}
+                        <div class="follow-up-comment">
+                            <p>{{ comment.comment_text }}</p>
+                            <span class="meta">{{ comment.created_at|datefmt }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
