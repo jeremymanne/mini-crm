@@ -864,6 +864,10 @@ def edit_proposal(id):
         for iid in contact_individuals:
             query_db('INSERT INTO proposal_contacts (proposal_id, individual_id) VALUES (?, ?)',
                      (id, int(iid)))
+        # Auto-close linked opportunity when proposal is Won or Lost
+        if status in ('Won', 'Lost') and follow_up_id:
+            query_db('UPDATE follow_ups SET closed_at = CURRENT_TIMESTAMP WHERE id = ? AND closed_at IS NULL',
+                     (follow_up_id,))
         commit_db()
         flash('Proposal updated.', 'success')
         return redirect(url_for('proposals'))
@@ -891,6 +895,12 @@ def update_proposal_status(id):
         flash('Invalid status.', 'error')
         return redirect(url_for('proposals'))
     query_db('UPDATE proposals SET status = ? WHERE id = ?', (new_status, id))
+    # Auto-close linked opportunity when proposal is Won or Lost
+    if new_status in ('Won', 'Lost'):
+        proposal = query_db('SELECT follow_up_id FROM proposals WHERE id = ?', (id,), one=True)
+        if proposal and proposal['follow_up_id']:
+            query_db('UPDATE follow_ups SET closed_at = CURRENT_TIMESTAMP WHERE id = ? AND closed_at IS NULL',
+                     (proposal['follow_up_id'],))
     commit_db()
     return redirect(url_for('proposals'))
 
@@ -979,8 +989,6 @@ def convert_to_proposal(id):
     # Set contact_person for backward compat
     if first_contact_name:
         query_db('UPDATE proposals SET contact_person = ? WHERE id = ?', (first_contact_name, proposal_id))
-    # Auto-close the opportunity
-    query_db('UPDATE follow_ups SET closed_at = CURRENT_TIMESTAMP WHERE id = ?', (id,))
     commit_db()
     flash('Proposal created from opportunity.', 'success')
     return redirect(url_for('edit_proposal', id=proposal_id))

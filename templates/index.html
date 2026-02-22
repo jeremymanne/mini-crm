@@ -36,7 +36,7 @@
                             <button type="submit" class="btn-small btn-close-opp" title="Close Opportunity">&#10003;</button>
                         </form>
                         <form method="post" action="{{ url_for('convert_to_proposal', id=item.follow_up.id) }}" class="inline-form"
-                              onsubmit="return confirm('Create a proposal from this opportunity? The opportunity will be closed.')">
+                              onsubmit="return confirm('Create a draft proposal from this opportunity?')">
                             <button type="submit" class="btn-small btn-convert" title="Convert to Proposal">&rarr; Proposal</button>
                         </form>
                         <a href="{{ url_for('edit_follow_up', id=item.follow_up.id) }}" class="btn-small">Edit</a>
@@ -108,7 +108,7 @@
                             <button type="submit" class="btn-small btn-close-opp" title="Close Opportunity">&#10003;</button>
                         </form>
                         <form method="post" action="{{ url_for('convert_to_proposal', id=item.follow_up.id) }}" class="inline-form"
-                              onsubmit="return confirm('Create a proposal from this opportunity? The opportunity will be closed.')">
+                              onsubmit="return confirm('Create a draft proposal from this opportunity?')">
                             <button type="submit" class="btn-small btn-convert" title="Convert to Proposal">&rarr; Proposal</button>
                         </form>
                         <a href="{{ url_for('edit_follow_up', id=item.follow_up.id) }}" class="btn-small">Edit</a>
@@ -183,7 +183,7 @@
                             <button type="submit" class="btn-small btn-close-opp" title="Close Opportunity">&#10003;</button>
                         </form>
                         <form method="post" action="{{ url_for('convert_to_proposal', id=item.follow_up.id) }}" class="inline-form"
-                              onsubmit="return confirm('Create a proposal from this opportunity? The opportunity will be closed.')">
+                              onsubmit="return confirm('Create a draft proposal from this opportunity?')">
                             <button type="submit" class="btn-small btn-convert" title="Convert to Proposal">&rarr; Proposal</button>
                         </form>
                         <a href="{{ url_for('edit_follow_up', id=item.follow_up.id) }}" class="btn-small">Edit</a>
